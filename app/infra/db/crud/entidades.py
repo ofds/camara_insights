@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import DateTime, Date  # <-- ADICIONAR ESTA LINHA
 from app.infra.db.models import entidades as models
 from datetime import datetime, date
+from typing import Optional
 
 def _flatten_dict(d, parent_key='', sep='_'):
     """ 'Achata' um dicionário aninhado. Ex: {'a': {'b': 1}} -> {'a_b': 1} """
@@ -72,3 +73,120 @@ def bulk_upsert_entidades(db: Session, model, data_list: list[dict]):
     for item_data in data_list:
         upsert_entidade(db, model, item_data)
     db.commit()
+
+def get_deputados(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100,
+    sigla_uf: Optional[str] = None,
+    sigla_partido: Optional[str] = None
+):
+    """
+    Busca uma lista paginada de deputados, com filtros opcionais por UF e Partido.
+    """
+    # Começa com a query base
+    query = db.query(models.Deputado)
+
+    # Adiciona o filtro de UF se ele for fornecido
+    if sigla_uf:
+        query = query.filter(models.Deputado.ultimoStatus_siglaUf == sigla_uf.upper())
+
+    # Adiciona o filtro de Partido se ele for fornecido
+    if sigla_partido:
+        query = query.filter(models.Deputado.ultimoStatus_siglaPartido == sigla_partido.upper())
+
+    # Aplica ordenação, paginação e executa a query
+    deputados = query.order_by(models.Deputado.ultimoStatus_nome).offset(skip).limit(limit).all()
+    
+    return deputados
+
+def get_proposicoes(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100,
+    sigla_tipo: Optional[str] = None,
+    ano: Optional[int] = None,
+    sort: Optional[str] = None
+):
+    """
+    Busca uma lista paginada de proposições, com filtros e ordenação opcionais.
+    """
+    query = db.query(models.Proposicao)
+
+    # Lógica de Filtros (como estava antes)
+    if sigla_tipo:
+        query = query.filter(models.Proposicao.siglaTipo == sigla_tipo.upper())
+    if ano:
+        query = query.filter(models.Proposicao.ano == ano)
+
+    # --- INÍCIO DA NOVA LÓGICA DE ORDENAÇÃO ---
+    allowed_sort_fields = {"id", "ano", "dataApresentacao"}
+    if sort:
+        # Tenta dividir o parâmetro em campo e direção
+        try:
+            field_name, direction = sort.split(":")
+            if field_name in allowed_sort_fields:
+                sort_column = getattr(models.Proposicao, field_name)
+                if direction.lower() == "desc":
+                    query = query.order_by(sort_column.desc())
+                else:
+                    query = query.order_by(sort_column.asc())
+            else: # Se o campo não é permitido, usa ordenação padrão
+                query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
+        except ValueError: # Se o formato for inválido (ex: "ano" em vez de "ano:asc")
+            query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
+    else:
+        # Ordenação Padrão
+        query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
+    # --- FIM DA NOVA LÓGICA DE ORDENAÇÃO ---
+    
+    proposicoes = query.offset(skip).limit(limit).all()
+    return proposicoes
+
+def get_partidos(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Busca uma lista paginada de partidos, ordenados pela sigla.
+    """
+    return (
+        db.query(models.Partido)
+        .order_by(models.Partido.sigla)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def get_orgaos(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Busca uma lista paginada de órgãos, ordenados pelo nome.
+    """
+    return (
+        db.query(models.Orgao)
+        .order_by(models.Orgao.nome)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def get_eventos(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Busca uma lista paginada de eventos, ordenados pelos mais recentes.
+    """
+    return (
+        db.query(models.Evento)
+        .order_by(models.Evento.dataHoraInicio.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+def get_votacoes(db: Session, skip: int = 0, limit: int = 100):
+    """
+    Busca uma lista paginada de votações, ordenadas pelas mais recentes.
+    """
+    return (
+        db.query(models.Votacao)
+        .order_by(models.Votacao.dataHoraRegistro.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )

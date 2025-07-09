@@ -1,3 +1,4 @@
 __pycache__/
 *.py[cod]
 camara_insights.db
+**/__pycache__/
