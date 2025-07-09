@@ -5,16 +5,13 @@ from typing import List, Optional
 
 class DeputadoSchema(BaseModel):
     id: int
-    # --- INÍCIO DA CORREÇÃO ---
-    # Marcamos os campos que podem ser nulos no banco de dados como Opcionais.
     nomeCivil: Optional[str] = None
     ultimoStatus_nome: Optional[str] = None
     ultimoStatus_siglaPartido: Optional[str] = None
     ultimoStatus_siglaUf: Optional[str] = None
     ultimoStatus_urlFoto: Optional[str] = None
     ultimoStatus_email: Optional[str] = None
-    # --- FIM DA CORREÇÃO ---
-
+    
     class Config:
         from_attributes = True
 
