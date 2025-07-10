@@ -39,7 +39,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
         <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', pl: { lg: 'var(--SideNav-width)' } }}>
           <MainNav />
           <main>
-            <Container maxWidth={false} disableGutters sx={{ p: 0 }}>
+            <Container maxWidth={false} disableGutters sx={{ p: 3, flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
               {children}
             </Container>
           </main>
