@@ -1,6 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 
 # Importe o agendador e os roteadores da API
 from app.core.scheduler import start_scheduler
@@ -21,6 +22,18 @@ app = FastAPI(
     description="Uma API para coletar, processar e analisar dados da Câmara dos Deputados do Brasil.",
     version="0.1.0",
     lifespan=lifespan # Adiciona o gerenciador de ciclo de vida
+)
+
+origins = [
+    "http://localhost:3000", # The address of your React frontend
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods
+    allow_headers=["*"], # Allows all headers
 )
 
 # Inclua os roteadores
