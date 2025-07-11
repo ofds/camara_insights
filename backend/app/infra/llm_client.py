@@ -67,7 +67,7 @@ class LLMClient:
             # --- Bloco de depuração melhorado ---
             print(f"--- ERRO DE PARSING JSON ---")
             print(f"Erro: {e}")
-            raw_content = ll_response_data.get('choices', [{}])[0].get('message', {}).get('content', 'Nenhum conteúdo na resposta.')
+            raw_content = llm_response_data.get('choices', [{}])[0].get('message', {}).get('content', 'Nenhum conteúdo na resposta.')
             print(f"Conteúdo bruto recebido do LLM que causou o erro: '{raw_content}'")
             print(f"-----------------------------")
             # --- Fim do bloco de depuração ---
