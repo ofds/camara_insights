@@ -1,26 +1,30 @@
-// src/app/dashboard/page.tsx
 'use client'; 
 
 import { useState, useEffect } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
 
-// Componente e serviço que já criamos
 import WeeklyCalendar from '@/components/dashboard/WeeklyCalendar';
 import { getEventosDaSemana, type ApiEvent } from '@/services/eventos.service';
+import { getHighImpactPropositions, type ApiProposition } from '@/services/proposicoes.service';
+import HighImpactPropositionsCard from '@/components/dashboard/HighImpactPropositionsCard';
 
 function DashboardPage() {
   const [eventos, setEventos] = useState<ApiEvent[]>([]);
+  const [propositions, setPropositions] = useState<ApiProposition[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // A lógica para buscar os dados continua a mesma
     const fetchEventos = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const dados = await getEventosDaSemana();
-        setEventos(dados);
+        const [eventosData, proposicoesData] = await Promise.all([
+          getEventosDaSemana(),
+          getHighImpactPropositions()
+        ]);
+        setEventos(eventosData);
+        setPropositions(proposicoesData);
       } catch (e: any) {
         setError(e.message || "Ocorreu um erro desconhecido.");
       } finally {
@@ -31,13 +35,15 @@ function DashboardPage() {
     fetchEventos();
   }, []);
 
-  // O retorno agora é muito mais simples
   return (
-    <Box sx={{ width: '100%' }}> {/* Garante que o contêiner principal ocupe toda a largura */}
+    <Box sx={{ width: '100%' }}>
       {isLoading && <CircularProgress />}
       {error && <Alert severity="error">Falha ao carregar dados: {error}</Alert>}
       {!isLoading && !error && (
-        <WeeklyCalendar events={eventos} />
+        <>
+          <WeeklyCalendar events={eventos} />
+          <HighImpactPropositionsCard propositions={propositions} />
+        </>
       )}
     </Box>
   );
