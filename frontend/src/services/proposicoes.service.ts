@@ -1,4 +1,4 @@
-// src/services/proposicoes.service.ts
+// frontend/src/services/proposicoes.service.ts
 
 export interface ApiProposition {
   id: number;
@@ -6,7 +6,7 @@ export interface ApiProposition {
   numero: number;
   ano: number;
   ementa: string;
-  dataApresentacao: string; // Corrected from data_apresentacao
+  dataApresentacao: string; 
   statusProposicao_descricaoSituacao: string;
   statusProposicao_descricaoTramitacao: string;
   impact_score: number | null;
@@ -18,26 +18,17 @@ export interface ApiProposition {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-/**
- * Busca as 5 proposições com maior pontuação de impacto.
- * @returns Uma promessa que resolve para um array de proposições.
- */
 interface GetPropositionsParams {
   limit?: number;
   skip?: number;
   sort?: string;
   filters?: { [key: string]: string | number };
+  siglaTipo?: string; 
 }
 
-/**
- * Busca proposições da API com filtros, ordenação e paginação dinâmicos.
- * @param params - Objeto com parâmetros para a query (limit, skip, sort, filters).
- * @returns Uma promessa que resolve para um array de proposições.
- */
 export const getPropositions = async (params: GetPropositionsParams = {}): Promise<ApiProposition[]> => {
-  const { limit = 10, skip = 0, sort, filters = {} } = params;
+  const { limit = 10, skip = 0, sort, filters = {}, siglaTipo } = params;
 
-  // URLSearchParams gerencia a codificação dos parâmetros da URL de forma segura
   const queryParams = new URLSearchParams({
     limit: String(limit),
     skip: String(skip),
@@ -47,11 +38,14 @@ export const getPropositions = async (params: GetPropositionsParams = {}): Promi
     queryParams.append('sort', sort);
   }
 
-  // Adiciona os filtros dinâmicos
   for (const key in filters) {
     if (Object.prototype.hasOwnProperty.call(filters, key)) {
       queryParams.append(key, String(filters[key]));
     }
+  }
+
+  if (siglaTipo) {
+    queryParams.append('siglaTipo', siglaTipo);
   }
 
   try {
@@ -70,11 +64,6 @@ export const getPropositions = async (params: GetPropositionsParams = {}): Promi
   }
 };
 
-/**
- * Busca as 5 proposições com maior pontuação de impacto. (Mantido para retrocompatibilidade)
- * Esta função agora pode usar a nova função genérica.
- * @returns Uma promessa que resolve para um array de proposições.
- */
 export const getHighImpactPropositions = async (): Promise<ApiProposition[]> => {
   return getPropositions({
     limit: 5,

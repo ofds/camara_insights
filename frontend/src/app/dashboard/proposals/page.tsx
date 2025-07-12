@@ -1,3 +1,5 @@
+// frontend/src/app/dashboard/proposals/page.tsx
+
 'use client';
 
 import * as React from 'react';
@@ -23,6 +25,7 @@ export default function Page(): React.JSX.Element {
     property: 'createdAt',
     order: 'desc',
   });
+  const [siglaTipo, setSiglaTipo] = useState('');
 
   const fetchProposals = useCallback(async () => {
     try {
@@ -33,8 +36,9 @@ export default function Page(): React.JSX.Element {
         skip: page * rowsPerPage,
         sort: sortString,
         filters,
+        siglaTipo,
       });
-      
+
       setProposals(response.map((prop) => ({
         id: prop.id.toString(),
         title: prop.ementa,
@@ -46,9 +50,9 @@ export default function Page(): React.JSX.Element {
         ano: prop.ano,
         impact_score: prop.impact_score,
       })));
-      
+
       // Using a placeholder for total count as the API doesn't provide it
-      setTotalCount(100); 
+      setTotalCount(100);
       setError(null);
     } catch (error_) {
       setError('Falha ao carregar as propostas');
@@ -56,7 +60,7 @@ export default function Page(): React.JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage, sort, filters]);
+  }, [page, rowsPerPage, sort, filters, siglaTipo]);
 
   useEffect(() => {
     fetchProposals();
@@ -70,7 +74,7 @@ export default function Page(): React.JSX.Element {
     setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
   };
-  
+
   const handleSort = (property: keyof Proposal) => {
     const isAsc = sort.property === property && sort.order === 'asc';
     setSort({ property, order: isAsc ? 'desc' : 'asc' });
@@ -78,6 +82,10 @@ export default function Page(): React.JSX.Element {
 
   const handleFilterChange = (value: string) => {
     setFilters({ ...filters, ementa: value });
+  };
+
+  const handleSiglaTipoChange = (value: string) => {
+    setSiglaTipo(value);
   };
 
   return (
@@ -93,7 +101,7 @@ export default function Page(): React.JSX.Element {
           </Button>
         </div>
       </Stack>
-      <ProposalsFilters onFilterChange={handleFilterChange} />
+      <ProposalsFilters onFilterChange={handleFilterChange} onSiglaTipoChange={handleSiglaTipoChange} />
       <ProposalsTable
         count={totalCount}
         page={page}

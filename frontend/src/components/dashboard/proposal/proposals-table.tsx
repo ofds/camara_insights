@@ -1,3 +1,5 @@
+// frontend/src/components/dashboard/proposal/proposals-table.tsx
+
 'use client';
 
 import * as React from 'react';
@@ -56,7 +58,7 @@ export function ProposalsTable({
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
-        <Table sx={{ minWidth: '1200px' }}>
+        <Table sx={{ minWidth: '1200px', '& .MuiTableCell-root': { fontSize: '0.875rem' } }}>
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox">
@@ -77,8 +79,16 @@ export function ProposalsTable({
                   Title
                 </TableSortLabel>
               </TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Author</TableCell>
+              <TableCell sortDirection={orderBy === 'status' ? order : false}>
+                <TableSortLabel active={orderBy === 'status'} direction={orderBy === 'status' ? order : 'asc'} onClick={() => onSort('status')}>
+                  Status
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={orderBy === 'author' ? order : false}>
+                <TableSortLabel active={orderBy === 'author'} direction={orderBy === 'author' ? order : 'asc'} onClick={() => onSort('author')}>
+                  Author
+                </TableSortLabel>
+              </TableCell>
               <TableCell sortDirection={orderBy === 'createdAt' ? order : false}>
                 <TableSortLabel active={orderBy === 'createdAt'} direction={orderBy === 'createdAt' ? order : 'asc'} onClick={() => onSort('createdAt')}>
                   Created
