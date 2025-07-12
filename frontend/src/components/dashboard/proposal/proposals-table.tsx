@@ -1,8 +1,7 @@
-// frontend/src/components/dashboard/proposal/proposals-table.tsx
-
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
@@ -24,6 +23,7 @@ import { KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as Keyboard
 import dayjs from 'dayjs';
 
 import type { ApiProposal, Proposal } from '@/types/proposition';
+import { paths } from '@/paths';
 
 interface ProposalsTableProps {
   count: number;
@@ -42,12 +42,24 @@ interface ProposalsTableProps {
 function ProposalRow(props: { row: Proposal; rawRow: ApiProposal }) {
   const { row, rawRow } = props;
   const [open, setOpen] = React.useState(false);
+  const router = useRouter();
+
+  const handleRowClick = () => {
+    router.push(`${paths.dashboard.proposals}/${row.id}`);
+  };
 
   return (
     <React.Fragment>
-      <TableRow sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }} onClick={() => setOpen(!open)}>
+      <TableRow sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }} onClick={handleRowClick}>
         <TableCell>
-          <IconButton aria-label="expand row" size="small">
+          <IconButton
+            aria-label="expand row"
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation(); // Impede que o clique no ícone acione o clique na linha
+              setOpen(!open);
+            }}
+          >
             {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
           </IconButton>
         </TableCell>
@@ -156,7 +168,7 @@ export function ProposalsTable({
                     active={orderBy === field.id}
                     direction={orderBy === field.id ? order : 'asc'}
                     onClick={() => onSort(field.id)}
-                    disabled={field.id === 'author'} // Disable sorting on hardcoded field
+                    disabled={field.id === 'author'} // Desabilita ordenação em campo com valor fixo
                   >
                     {field.label}
                   </TableSortLabel>

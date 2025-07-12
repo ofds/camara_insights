@@ -1,10 +1,11 @@
 # camara_insights/app/infra/db/crud/entidades.py
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import DateTime, Date, desc, asc, func
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
+from app.domain.entidades import ProposicaoSchema
 
 
 def _flatten_dict(d, parent_key='', sep='_'):
@@ -279,3 +280,33 @@ def get_votacoes(db: Session, skip: int = 0, limit: int = 100):
         .limit(limit)
         .all()
     )
+
+def get_proposicao_by_id(db: Session, proposicao_id: int) -> Optional[ProposicaoSchema]:
+    """
+    Busca uma única proposição pelo seu ID, juntando os dados de IA.
+    """
+    # Usamos um 'aliased' para o caso de querermos referenciar a tabela de IA de forma explícita
+    ai_data_alias = aliased(models_ai.ProposicaoAIData)
+
+    result = (
+        db.query(models.Proposicao, ai_data_alias)
+        .outerjoin(ai_data_alias, models.Proposicao.id == ai_data_alias.proposicao_id)
+        .filter(models.Proposicao.id == proposicao_id)
+        .first()
+    )
+
+    if not result:
+        return None
+
+    proposicao, ai_data = result
+    
+    # Monta o objeto de resposta combinando os dados
+    prop_data = ProposicaoSchema.from_orm(proposicao)
+    if ai_data:
+        prop_data.impact_score = ai_data.impact_score
+        prop_data.summary = ai_data.summary
+        prop_data.scope = ai_data.scope
+        prop_data.magnitude = ai_data.magnitude
+        prop_data.tags = ai_data.tags
+
+    return prop_data
