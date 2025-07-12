@@ -1,72 +1,58 @@
 // frontend/src/services/proposicoes.service.ts
 
-export interface ApiProposition {
-  id: number;
-  siglaTipo: string;
-  numero: number;
-  ano: number;
-  ementa: string;
-  dataApresentacao: string; 
-  statusProposicao_descricaoSituacao: string;
-  statusProposicao_descricaoTramitacao: string;
-  impact_score: number | null;
-  summary: string | null;
-  scope: string | null;
-  magnitude: string | null;
-  tags: string[] | null;
-}
+import type { ApiProposal } from '@/types/proposition';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-interface GetPropositionsParams {
-  limit?: number;
-  skip?: number;
-  sort?: string;
-  filters?: { [key: string]: string | number };
-  siglaTipo?: string; 
-}
 
-export const getPropositions = async (params: GetPropositionsParams = {}): Promise<ApiProposition[]> => {
-  const { limit = 10, skip = 0, sort, filters = {}, siglaTipo } = params;
-
-  const queryParams = new URLSearchParams({
-    limit: String(limit),
-    skip: String(skip),
-  });
-
+/**
+ * Fetches a list of propositions from the backend API with support for pagination, sorting, and dynamic filters.
+ * @param params - The query parameters for the request.
+ * @param params.limit - The number of records to return.
+ * @param params.skip - The number of records to skip.
+ * @param params.sort - The sorting order for the results.
+ * @param params.filters - The dynamic filters to apply.
+ * @returns A promise that resolves to an array of proposals.
+ */
+export async function getPropositions({
+  limit,
+  skip,
+  sort,
+  filters,
+}: {
+  limit: number;
+  skip: number;
+  sort: string;
+  filters: { [key: string]: string | number };
+}): Promise<ApiProposal[]> {
+  const params = new URLSearchParams();
+  params.append('limit', String(limit));
+  params.append('skip', String(skip));
   if (sort) {
-    queryParams.append('sort', sort);
+    params.append('sort', sort);
   }
 
   for (const key in filters) {
     if (Object.prototype.hasOwnProperty.call(filters, key)) {
-      queryParams.append(key, String(filters[key]));
+      params.append(key, String(filters[key]));
     }
   }
 
-  if (siglaTipo) {
-    queryParams.append('siglaTipo', siglaTipo);
+  const response = await fetch(`${API_BASE_URL}/proposicoes?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/proposicoes?${queryParams.toString()}`);
+  const data = await response.json();
+  return data;
+}
 
-    if (!response.ok) {
-      throw new Error(`Erro na API: ${response.statusText}`);
-    }
 
-    const data: ApiProposition[] = await response.json();
-    return data;
-
-  } catch (error) {
-    console.error("Falha ao buscar proposições:", error);
-    return [];
-  }
-};
-
-export const getHighImpactPropositions = async (): Promise<ApiProposition[]> => {
+export const getHighImpactPropositions = async (): Promise<ApiProposal[]> => {
   return getPropositions({
     limit: 5,
     sort: 'impact_score:desc',
+    skip: 0,
   });
 };

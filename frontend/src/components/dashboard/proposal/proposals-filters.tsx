@@ -5,42 +5,85 @@ import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
-import { Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Select, MenuItem, InputLabel, FormControl, TextField } from '@mui/material';
 
 export function ProposalsFilters({
   onFilterChange,
-  onSiglaTipoChange,
 }: {
-  onFilterChange: (value: string) => void;
-  onSiglaTipoChange: (value: string) => void;
+  onFilterChange: (filters: { [key: string]: string | number }) => void;
 }): React.JSX.Element {
+  const [filters, setFilters] = React.useState<{ [key: string]: string | number }>({});
+
+  const handleChange = (key: string, value: string | number) => {
+    const newFilters = { ...filters, [key]: value };
+    if (value === '') {
+      delete newFilters[key];
+    }
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
   return (
-    <Card sx={{ p: 2, display: 'flex', gap: 2 }}>
+    <Card sx={{ p: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
       <OutlinedInput
         defaultValue=""
-        fullWidth
-        placeholder="Search proposal by title"
+        placeholder="Buscar por título"
+        size="small"
         startAdornment={
           <InputAdornment position="start">
             <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
           </InputAdornment>
         }
-        sx={{ maxWidth: '500px' }}
-        onChange={(e) => onFilterChange(e.target.value)}
+        sx={{ flexGrow: 1, minWidth: '300px' }}
+        onChange={(e) => handleChange('ementa', e.target.value)}
       />
-      <FormControl sx={{ minWidth: 120 }}>
+      <FormControl sx={{ minWidth: 100 }} size="small">
         <InputLabel>Tipo</InputLabel>
         <Select
-          onChange={(e) => onSiglaTipoChange(e.target.value as string)}
+          onChange={(e) => handleChange('siglaTipo', e.target.value as string)}
           label="Tipo"
+          value={filters.siglaTipo || ''}
         >
           <MenuItem value="">
             <em>Todos</em>
           </MenuItem>
           <MenuItem value="PEC">PEC</MenuItem>
           <MenuItem value="PL">PL</MenuItem>
+          <MenuItem value="PLP">PLP</MenuItem>
+          <MenuItem value="MPV">MPV</MenuItem>
+          <MenuItem value="REQ">REQ</MenuItem>
         </Select>
       </FormControl>
+      <TextField
+        label="Tags"
+        variant="outlined"
+        size="small"
+        sx={{ minWidth: 120 }}
+        onChange={(e) => handleChange('tags', e.target.value)}
+      />
+      <TextField
+        label="Autor"
+        variant="outlined"
+        size="small"
+        sx={{ minWidth: 120 }}
+        onChange={(e) => handleChange('autor', e.target.value)}
+      />
+      <TextField
+        label="Número"
+        variant="outlined"
+        type="number"
+        size="small"
+        sx={{ minWidth: 90, maxWidth: '100px' }}
+        onChange={(e) => handleChange('numero', e.target.value)}
+      />
+      <TextField
+        label="Ano"
+        variant="outlined"
+        type="number"
+        size="small"
+        sx={{ minWidth: 90, maxWidth: '100px' }}
+        onChange={(e) => handleChange('ano', e.target.value)}
+      />
     </Card>
   );
 }

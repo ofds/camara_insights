@@ -5,38 +5,124 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
+import Collapse from '@mui/material/Collapse';
 import Divider from '@mui/material/Divider';
+import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
+import Skeleton from '@mui/material/Skeleton';
+import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
+import TableSortLabel from '@mui/material/TableSortLabel';
 import Typography from '@mui/material/Typography';
+import { KeyboardArrowDown as KeyboardArrowDownIcon, KeyboardArrowUp as KeyboardArrowUpIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import Skeleton from '@mui/material/Skeleton';
-import { TableSortLabel } from '@mui/material';
 
-import { useSelection } from '@/hooks/use-selection';
-import type { Proposal } from '@/types/proposition';
+import type { ApiProposal, Proposal } from '@/types/proposition';
 
 interface ProposalsTableProps {
   count: number;
   page: number;
   rows: Proposal[];
+  rawRows: ApiProposal[];
   rowsPerPage: number;
   onPageChange: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onSort: (property: keyof Proposal) => void;
+  onSort: (property: string) => void;
   order: 'asc' | 'desc';
-  orderBy: keyof Proposal;
+  orderBy: string;
   loading?: boolean;
+}
+
+function ProposalRow(props: { row: Proposal; rawRow: ApiProposal }) {
+  const { row, rawRow } = props;
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <React.Fragment>
+      <TableRow sx={{ '& > *': { borderBottom: 'unset' }, cursor: 'pointer' }} onClick={() => setOpen(!open)}>
+        <TableCell>
+          <IconButton aria-label="expand row" size="small">
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell>
+          <Typography variant="body2" noWrap sx={{ maxWidth: '250px' }}>
+            {row.title}
+          </Typography>
+        </TableCell>
+        <TableCell>{row.status}</TableCell>
+        <TableCell>{row.author}</TableCell>
+        <TableCell>{dayjs(row.createdAt).format('DD/MM/YYYY')}</TableCell>
+        <TableCell>{row.siglaTipo}</TableCell>
+        <TableCell>{row.numero}</TableCell>
+        <TableCell>{row.ano}</TableCell>
+        <TableCell>{row.impact_score}</TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 1, padding: 2, backgroundColor: 'rgba(0, 0, 0, 0.02)', borderRadius: 1 }}>
+              <Typography variant="subtitle1" gutterBottom component="div" sx={{ fontWeight: 'bold' }}>
+                Detalhes da Proposta
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    Resumo:
+                  </Typography>
+                  <Typography variant="body2">{rawRow.summary || 'Não disponível'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    Escopo:
+                  </Typography>
+                  <Typography variant="body2">{rawRow.scope || 'Não disponível'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    Magnitude:
+                  </Typography>
+                  <Typography variant="body2">{rawRow.magnitude || 'Não disponível'}</Typography>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    Tramitação:
+                  </Typography>
+                  <Typography variant="body2">{rawRow.statusProposicao_descricaoTramitacao || 'Não disponível'}</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    Tags:
+                  </Typography>
+                  {rawRow.tags && rawRow.tags.length > 0 ? (
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                      {rawRow.tags.map((tag) => (
+                        <Chip key={tag} label={tag} size="small" />
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography variant="body2">Nenhuma tag</Typography>
+                  )}
+                </Grid>
+              </Grid>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </React.Fragment>
+  );
 }
 
 export function ProposalsTable({
   count,
   rows,
+  rawRows,
   page,
   rowsPerPage,
   onPageChange,
@@ -46,106 +132,51 @@ export function ProposalsTable({
   orderBy,
   loading = false,
 }: ProposalsTableProps): React.JSX.Element {
-  const rowIds = React.useMemo(() => {
-    return rows.map((proposal) => proposal.id);
-  }, [rows]);
-
-  const { selectAll, deselectAll, selectOne, deselectOne, selected } = useSelection(rowIds);
-
-  const selectedSome = (selected?.size ?? 0) > 0 && (selected?.size ?? 0) < rows.length;
-  const selectedAll = rows.length > 0 && selected?.size === rows.length;
+  const sortableFields: { id: string; label: string }[] = [
+    { id: 'ementa', label: 'Título' },
+    { id: 'statusProposicao_descricaoSituacao', label: 'Status' },
+    { id: 'author', label: 'Autor' },
+    { id: 'dataApresentacao', label: 'Criação' },
+    { id: 'siglaTipo', label: 'Tipo' },
+    { id: 'numero', label: 'Número' },
+    { id: 'ano', label: 'Ano' },
+    { id: 'impact_score', label: 'Pontuação de Impacto' },
+  ];
 
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
-        <Table sx={{ minWidth: '1200px', '& .MuiTableCell-root': { fontSize: '0.875rem' } }}>
+        <Table sx={{ minWidth: '1000px', '& .MuiTableCell-root': { fontSize: '0.75rem', padding: '12px' } }}>
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  checked={selectedAll}
-                  indeterminate={selectedSome}
-                  onChange={(event) => {
-                    if (event.target.checked) {
-                      selectAll();
-                    } else {
-                      deselectAll();
-                    }
-                  }}
-                />
-              </TableCell>
-              <TableCell sortDirection={orderBy === 'title' ? order : false}>
-                <TableSortLabel active={orderBy === 'title'} direction={orderBy === 'title' ? order : 'asc'} onClick={() => onSort('title')}>
-                  Title
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={orderBy === 'status' ? order : false}>
-                <TableSortLabel active={orderBy === 'status'} direction={orderBy === 'status' ? order : 'asc'} onClick={() => onSort('status')}>
-                  Status
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={orderBy === 'author' ? order : false}>
-                <TableSortLabel active={orderBy === 'author'} direction={orderBy === 'author' ? order : 'asc'} onClick={() => onSort('author')}>
-                  Author
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={orderBy === 'createdAt' ? order : false}>
-                <TableSortLabel active={orderBy === 'createdAt'} direction={orderBy === 'createdAt' ? order : 'asc'} onClick={() => onSort('createdAt')}>
-                  Created
-                </TableSortLabel>
-              </TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Number</TableCell>
-              <TableCell>Year</TableCell>
-              <TableCell sortDirection={orderBy === 'impact_score' ? order : false}>
-                 <TableSortLabel active={orderBy === 'impact_score'} direction={orderBy === 'impact_score' ? order : 'asc'} onClick={() => onSort('impact_score')}>
-                  Impact Score
-                </TableSortLabel>
-              </TableCell>
+              <TableCell />
+              {sortableFields.map((field) => (
+                <TableCell key={field.id} sortDirection={orderBy === field.id ? order : false}>
+                  <TableSortLabel
+                    active={orderBy === field.id}
+                    direction={orderBy === field.id ? order : 'asc'}
+                    onClick={() => onSort(field.id)}
+                    disabled={field.id === 'author'} // Disable sorting on hardcoded field
+                  >
+                    {field.label}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               Array.from({ length: rowsPerPage }).map((_, index) => (
                 <TableRow key={index}>
-                  <TableCell padding="checkbox">
-                    <Skeleton variant="rectangular" width={24} height={24} />
-                  </TableCell>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <Skeleton variant="text" />
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               rows.map((row) => {
-                const isSelected = selected?.has(row.id);
-
-                return (
-                  <TableRow hover key={row.id} selected={isSelected}>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            selectOne(row.id);
-                          } else {
-                            deselectOne(row.id);
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="subtitle2" noWrap sx={{ maxWidth: '300px' }}>{row.title}</Typography>
-                    </TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{row.author}</TableCell>
-                    <TableCell>{dayjs(row.createdAt).format('MMM D, YYYY')}</TableCell>
-                    <TableCell>{row.siglaTipo}</TableCell>
-                    <TableCell>{row.numero}</TableCell>
-                    <TableCell>{row.ano}</TableCell>
-                    <TableCell>{row.impact_score}</TableCell>
-                  </TableRow>
-                );
+                const rawRow = rawRows.find((r) => r.id.toString() === row.id);
+                return rawRow ? <ProposalRow key={row.id} row={row} rawRow={rawRow} /> : null;
               })
             )}
           </TableBody>
@@ -159,7 +190,8 @@ export function ProposalsTable({
         onRowsPerPageChange={onRowsPerPageChange}
         page={page}
         rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        labelRowsPerPage="Linhas por página:"
       />
     </Card>
   );
