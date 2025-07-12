@@ -24,7 +24,7 @@ export default function HighImpactPropositionsCard({ propositions }: HighImpactP
               <ListItemText
                 primary={
                   <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                    {`${prop.sigla_tipo} ${prop.numero}/${prop.ano}`}
+                    {`${prop.siglaTipo} ${prop.numero}/${prop.ano}`}
                   </Typography>
                 }
                 secondary={

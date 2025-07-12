@@ -3,7 +3,7 @@
 // Interface que define a estrutura de uma proposição vinda da API
 export interface ApiProposition {
   id: number;
-  sigla_tipo: string;
+  siglaTipo: string;
   numero: number;
   ano: number;
   ementa: string;
