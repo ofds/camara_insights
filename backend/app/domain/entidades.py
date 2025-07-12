@@ -24,6 +24,7 @@ class ProposicaoSchema(BaseModel):
     dataApresentacao: Optional[datetime] = None
     statusProposicao_descricaoSituacao: Optional[str] = None
     statusProposicao_descricaoTramitacao: Optional[str] = None
+    impact_score: Optional[int] = None
 
     class Config:
         from_attributes = True

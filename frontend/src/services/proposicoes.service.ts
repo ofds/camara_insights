@@ -19,8 +19,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8
  */
 export const getHighImpactPropositions = async (): Promise<ApiProposition[]> => {
   try {
-    // Montamos a URL com os parâmetros para ordenar por 'impact_score'
-    const response = await fetch(`${API_BASE_URL}/proposicoes?order_by=impact_score&order_dir=desc&limit=5`);
+    // URL corrigida para usar 'sort=impact_score:desc'
+    const response = await fetch(`${API_BASE_URL}/proposicoes?sort=impact_score:desc&limit=5`);
 
     if (!response.ok) {
       throw new Error(`Erro na API: ${response.statusText}`);

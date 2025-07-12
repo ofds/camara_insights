@@ -1,9 +1,12 @@
 # camara_insights/app/infra/db/crud/entidades.py
-from sqlalchemy.orm import Session
-from sqlalchemy import DateTime, Date  # <-- ADICIONAR ESTA LINHA
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import DateTime, Date
+from sqlalchemy import desc, asc 
 from app.infra.db.models import entidades as models
+from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
 from typing import Optional
+
 
 def _flatten_dict(d, parent_key='', sep='_'):
     """ 'Achata' um dicionário aninhado. Ex: {'a': {'b': 1}} -> {'a_b': 1} """
@@ -101,8 +104,8 @@ def get_deputados(
     return deputados
 
 def get_proposicoes(
-    db: Session, 
-    skip: int = 0, 
+    db: Session,
+    skip: int = 0,
     limit: int = 100,
     sigla_tipo: Optional[str] = None,
     ano: Optional[int] = None,
@@ -111,37 +114,74 @@ def get_proposicoes(
     """
     Busca uma lista paginada de proposições, com filtros e ordenação opcionais.
     """
-    query = db.query(models.Proposicao)
+    # Query base agora une Proposicao com ProposicaoAIData
+    query = db.query(
+        models.Proposicao.id,
+        models.Proposicao.siglaTipo,
+        models.Proposicao.numero,
+        models.Proposicao.ano,
+        models.Proposicao.ementa,
+        models.Proposicao.dataApresentacao,
+        models.Proposicao.statusProposicao_descricaoSituacao,
+        models.Proposicao.statusProposicao_descricaoTramitacao,
+        models_ai.ProposicaoAIData.impact_score
+    ).outerjoin(
+        models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
+    )
 
-    # Lógica de Filtros (como estava antes)
+
+    # Lógica de Filtros
     if sigla_tipo:
         query = query.filter(models.Proposicao.siglaTipo == sigla_tipo.upper())
     if ano:
         query = query.filter(models.Proposicao.ano == ano)
 
-    # --- INÍCIO DA NOVA LÓGICA DE ORDENAÇÃO ---
-    allowed_sort_fields = {"id", "ano", "dataApresentacao"}
+    # Lógica de Ordenação Atualizada
+    allowed_sort_fields = {"id", "ano", "dataApresentacao", "impact_score"}
+    sort_column = models.Proposicao.ano
+    direction_func = desc
+
     if sort:
-        # Tenta dividir o parâmetro em campo e direção
         try:
-            field_name, direction = sort.split(":")
+            field_name, direction_str = sort.split(":")
             if field_name in allowed_sort_fields:
-                sort_column = getattr(models.Proposicao, field_name)
-                if direction.lower() == "desc":
-                    query = query.order_by(sort_column.desc())
+                # O campo impact_score pertence ao modelo ProposicaoAIData
+                if field_name == "impact_score":
+                    sort_column = models_ai.ProposicaoAIData.impact_score
                 else:
-                    query = query.order_by(sort_column.asc())
-            else: # Se o campo não é permitido, usa ordenação padrão
-                query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
-        except ValueError: # Se o formato for inválido (ex: "ano" em vez de "ano:asc")
-            query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
-    else:
-        # Ordenação Padrão
-        query = query.order_by(models.Proposicao.ano.desc(), models.Proposicao.id.desc())
-    # --- FIM DA NOVA LÓGICA DE ORDENAÇÃO ---
+                    sort_column = getattr(models.Proposicao, field_name)
+                
+                if direction_str.lower() == "asc":
+                    direction_func = asc
+        except ValueError:
+            pass # Usa o padrão se o formato for inválido
+
+    # Ordenação padrão ou definida
+    query = query.order_by(direction_func(sort_column))
     
-    proposicoes = query.offset(skip).limit(limit).all()
-    return proposicoes
+    # Adicione uma ordenação secundária para garantir resultados consistentes
+    if sort_column != models.Proposicao.id:
+        query = query.order_by(direction_func(sort_column), desc(models.Proposicao.id))
+
+    results = query.offset(skip).limit(limit).all()
+
+    # O SQLAlchemy retorna uma lista de Tuples, então convertemos para um formato de dicionário
+    # para que o Pydantic possa validar e criar o schema de resposta.
+    proposicoes_dict = [
+        {
+            'id': p.id,
+            'siglaTipo': p.siglaTipo,
+            'numero': p.numero,
+            'ano': p.ano,
+            'ementa': p.ementa,
+            'dataApresentacao': p.dataApresentacao,
+            'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
+            'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
+            'impact_score': p.impact_score
+        } for p in results
+    ]
+
+    return proposicoes_dict
 
 def get_partidos(db: Session, skip: int = 0, limit: int = 100):
     """
