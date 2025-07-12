@@ -1,11 +1,10 @@
 # camara_insights/app/infra/db/crud/entidades.py
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import DateTime, Date
-from sqlalchemy import desc, asc, func
+from sqlalchemy import DateTime, Date, desc, asc, func
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 
 def _flatten_dict(d, parent_key='', sep='_'):
@@ -78,96 +77,94 @@ def bulk_upsert_entidades(db: Session, model, data_list: list[dict]):
     db.commit()
 
 def get_deputados(
-    db: Session, 
-    skip: int = 0, 
+    db: Session,
+    skip: int = 0,
     limit: int = 100,
-    sigla_uf: Optional[str] = None,
-    sigla_partido: Optional[str] = None
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[str] = None
 ):
     """
-    Busca uma lista paginada de deputados, com filtros opcionais por UF e Partido.
+    Busca uma lista paginada de deputados, com filtros e ordenação dinâmicos.
     """
-    # Começa com a query base
+    from .utils import apply_filters_and_sorting
+
+    # Query inicial
     query = db.query(models.Deputado)
 
-    # Adiciona o filtro de UF se ele for fornecido
-    if sigla_uf:
-        query = query.filter(models.Deputado.ultimoStatus_siglaUf == sigla_uf.upper())
+    # Define campos permitidos para ordenação e filtragem
+    allowed_sort_fields = {
+        "nome": models.Deputado.ultimoStatus_nome,
+        "siglaUf": models.Deputado.ultimoStatus_siglaUf,
+        "siglaPartido": models.Deputado.ultimoStatus_siglaPartido,
+    }
 
-    # Adiciona o filtro de Partido se ele for fornecido
-    if sigla_partido:
-        query = query.filter(models.Deputado.ultimoStatus_siglaPartido == sigla_partido.upper())
+    # Aplica filtros e ordenação dinâmicos
+    query_result = apply_filters_and_sorting(
+        query,
+        model=models.Deputado,
+        filters=filters,
+        sort=sort,
+        allowed_sort_fields=allowed_sort_fields,
+        default_sort_field="nome"
+    )
 
-    # Aplica ordenação, paginação e executa a query
-    deputados = query.order_by(models.Deputado.ultimoStatus_nome).offset(skip).limit(limit).all()
-    
-    return deputados
-"""
-    Busca uma lista paginada de proposições, com filtros e ordenação opcionais.
-    """
+    # Aplica paginação e retorna resultados
+    return query_result.offset(skip).limit(limit).all()
+from .utils import apply_filters_and_sorting
+
 def get_proposicoes(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    sigla_tipo: Optional[str] = None,
-    ano: Optional[int] = None,
+    filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None
 ):
-    # 1. Simplificamos a query para buscar o campo 'tags' como texto bruto.
+    """
+    Busca uma lista paginada de proposições, com filtros e ordenação por campo de impacto AI.
+    """
     query = db.query(
-        models.Proposicao.id,
-        models.Proposicao.siglaTipo,
-        models.Proposicao.numero,
-        models.Proposicao.ano,
-        models.Proposicao.ementa,
-        models.Proposicao.dataApresentacao,
-        models.Proposicao.statusProposicao_descricaoSituacao,
-        models.Proposicao.statusProposicao_descricaoTramitacao,
+        models.Proposicao,
         models_ai.ProposicaoAIData.impact_score,
         models_ai.ProposicaoAIData.summary,
         models_ai.ProposicaoAIData.scope,
         models_ai.ProposicaoAIData.magnitude,
-        models_ai.ProposicaoAIData.tags  # Buscamos o campo de texto diretamente
+        models_ai.ProposicaoAIData.tags
     ).outerjoin(
         models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
     )
 
-    # Lógica de Filtros (sem alterações)
-    if sigla_tipo:
-        query = query.filter(models.Proposicao.siglaTipo == sigla_tipo.upper())
-    if ano:
-        query = query.filter(models.Proposicao.ano == ano)
+    # Adiciona lógica de filter dinâmico
+    if filters:
+        for field, value in filters.items():
+            if hasattr(models.Proposicao, field):
+                query = query.filter(getattr(models.Proposicao, field) == value)
 
-    # Lógica de Ordenação (sem alterações)
-    allowed_sort_fields = {"id", "ano", "dataApresentacao", "impact_score"}
-    sort_column = models.Proposicao.ano
-    direction_func = desc
+    # Define allowed fields for sorting and security context awareness
+    allowed_sort_fields = {
+        "id": models.Proposicao.id,
+        "ano": models.Proposicao.ano,
+        "dataApresentacao": models.Proposicao.dataApresentacao,
+        "impact_score": models_ai.ProposicaoAIData.impact_score
+    }
 
-    if sort:
-        try:
-            field_name, direction_str = sort.split(":")
-            if field_name in allowed_sort_fields:
-                if field_name == "impact_score":
-                    sort_column = models_ai.ProposicaoAIData.impact_score
-                else:
-                    sort_column = getattr(models.Proposicao, field_name)
-                
-                if direction_str.lower() == "asc":
-                    direction_func = asc
-        except ValueError:
-            pass
+    # Apply dynamic sorting with default fallback
+    def default_sort_key(p):
+        return (p.Proposicao.dataApresentacao is None, p.Proposicao.dataApresentacao)
 
-    query = query.order_by(direction_func(sort_column).nullslast())
-    
-    if sort_column != models.Proposicao.id:
-        query = query.order_by(direction_func(sort_column).nullslast(), desc(models.Proposicao.id))
+    query_result = apply_filters_and_sorting(
+        query,
+        model=models.Proposicao,
+        filters=filters,
+        sort=sort,
+        allowed_sort_fields=allowed_sort_fields,
+        default_sort_field="dataApresentacao"
+    )
 
-    results = query.offset(skip).limit(limit).all()
-
-    # 2. Processamos as tags aqui, no código Python.
-    proposicoes_dict = []
-    for p in results:
-        proposicoes_dict.append({
+    # Final response construction
+    results = query_result.offset(skip).limit(limit).all()
+    proposicoes_list = []
+    for p, impact_score, summary, scope, magnitude, tags in results:
+        prop_data = {
             'id': p.id,
             'siglaTipo': p.siglaTipo,
             'numero': p.numero,
@@ -176,39 +173,78 @@ def get_proposicoes(
             'dataApresentacao': p.dataApresentacao,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
-            'impact_score': p.impact_score,
-            'summary': p.summary,
-            'scope': p.scope,
-            'magnitude': p.magnitude,
-            # Verificamos se 'p.tags' não é None antes de fazer o split.
-            'tags': [tag.strip() for tag in p.tags] if p.tags else []
-        })
+            'impact_score': impact_score or 0.0,   # Ensure non-nullable fields for AI score
+            'summary': summary,
+            'scope': scope,
+            'magnitude': magnitude,
+            'tags': tags if tags else []           # Handle potential null lists from AI service
+        }
+        proposicoes_list.append(prop_data)
 
-    return proposicoes_dict
+    return proposicoes_list
 
-def get_partidos(db: Session, skip: int = 0, limit: int = 100):
+def get_partidos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[str] = None
+):
     """
-    Busca uma lista paginada de partidos, ordenados pela sigla.
+    Busca uma lista paginada de partidos, com ordenação e filtragem dinâmicas.
     """
-    return (
-        db.query(models.Partido)
-        .order_by(models.Partido.sigla)
-        .offset(skip)
-        .limit(limit)
-        .all()
+    from .utils import apply_filters_and_sorting
+
+    # Query inicial
+    query = db.query(models.Partido)
+
+    # Define campos permitidos para ordenação e filtragem
+    allowed_sort_fields = {
+        "sigla": models.Partido.sigla,
+        "nome": models.Partido.nome,
+    }
+
+    # Aplica filtros e ordenação dinâmicos
+    query_result = apply_filters_and_sorting(
+        query,
+        model=models.Partido,
+        filters=filters,
+        sort=sort,
+        allowed_sort_fields=allowed_sort_fields,
+        default_sort_field="sigla"
     )
+
+    # Aplica paginação e retorna resultados
+    return query_result.offset(skip).limit(limit).all()
 
 def get_orgaos(db: Session, skip: int = 0, limit: int = 100):
     """
-    Busca uma lista paginada de órgãos, ordenados pelo nome.
+    Busca uma lista paginada de órgãos, ordenados pelo nome, com filtragem e ordenação dinâmicas.
     """
-    return (
-        db.query(models.Orgao)
-        .order_by(models.Orgao.nome)
-        .offset(skip)
-        .limit(limit)
-        .all()
+    from .utils import apply_filters_and_sorting
+
+    # Campos permitidos para ordenação e filtragem
+    allowed_sort_fields = {
+        "nome": models.Orgao.nome,
+        "id": models.Orgao.id
+    }
+
+    # Inicializa a query com o modelo Orgao
+    query = db.query(models.Orgao)
+
+    # Aplica ordenação e filtros dinâmicos (se houver parâmetros na request)
+    filters = req.query_params.get('filters', {}) if 'req' in locals() or 'req' in globals() else {}
+
+    query_result = apply_filters_and_sorting(
+        query,
+        model=models.Orgao,
+        filters=filters,
+        sort=sort,
+        allowed_sort_fields=allowed_sort_fields,
+        default_sort_field="nome"
     )
+
+    return query_result.offset(skip).limit(limit).all()
 
 def get_eventos(db: Session, skip: int = 0, limit: int = 100):
     """
