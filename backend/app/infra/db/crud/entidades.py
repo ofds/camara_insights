@@ -169,15 +169,17 @@ def get_proposicoes(
             'siglaTipo': p.siglaTipo,
             'numero': p.numero,
             'ano': p.ano,
-            'ementa': p.ementa,
+            'urlInteiroTeor': p.urlInteiroTeor,
             'dataApresentacao': p.dataApresentacao,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
+            'ementa': p.ementa,
             'impact_score': impact_score or 0.0,   # Ensure non-nullable fields for AI score
             'summary': summary,
             'scope': scope,
             'magnitude': magnitude,
-            'tags': tags if tags else []           # Handle potential null lists from AI service
+            'tags': tags if tags else [],
+                      # Handle potential null lists from AI service
         }
         proposicoes_list.append(prop_data)
 

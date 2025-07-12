@@ -41,6 +41,7 @@ class Proposicao(Base):
     ano = Column(Integer, index=True)
     ementa = Column(Text, nullable=True)
     dataApresentacao = Column(DateTime)
+    urlInteiroTeor = Column(String, nullable=True)
     # Campos do 'statusProposicao'
     statusProposicao_dataHora = Column(DateTime, nullable=True)
     statusProposicao_sequencia = Column(Integer, nullable=True)
@@ -52,7 +53,7 @@ class Proposicao(Base):
     statusProposicao_codSituacao = Column(Integer, nullable=True)
     statusProposicao_despacho = Column(Text, nullable=True)
     statusProposicao_url = Column(String, nullable=True)
-    urlInteiroTeor = Column(String, nullable=True)
+    
 
 class Partido(Base):
     __tablename__ = "partidos"

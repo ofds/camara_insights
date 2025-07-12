@@ -29,6 +29,7 @@ class ProposicaoSchema(BaseModel):
     scope: Optional[str] = None
     magnitude: Optional[str] = None
     tags: Optional[List[str]] = None
+    urlInteiroTeor: Optional[str] = None
 
     class Config:
         from_attributes = True
