@@ -169,17 +169,25 @@ def get_proposicoes(
             'siglaTipo': p.siglaTipo,
             'numero': p.numero,
             'ano': p.ano,
-            'urlInteiroTeor': p.urlInteiroTeor,
+            'ementa': p.ementa,
             'dataApresentacao': p.dataApresentacao,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
-            'ementa': p.ementa,
-            'impact_score': impact_score or 0.0,   # Ensure non-nullable fields for AI score
+            
+            # --- CAMPOS ADICIONADOS ---
+            'uriAutores': p.uriAutores,
+            'descricaoTipo': p.descricaoTipo,
+            'ementaDetalhada': p.ementaDetalhada,
+            'keywords': p.keywords,
+            'urlInteiroTeor': p.urlInteiroTeor,
+            # --- FIM DOS CAMPOS ADICIONADOS ---
+
+            # --- Campos da IA ---
+            'impact_score': impact_score or 0.0, # Garante que campos não nulos para o score da IA
             'summary': summary,
             'scope': scope,
             'magnitude': magnitude,
-            'tags': tags if tags else [],
-                      # Handle potential null lists from AI service
+            'tags': tags if tags else [], # Trata listas potencialmente nulas do serviço de IA
         }
         proposicoes_list.append(prop_data)
 

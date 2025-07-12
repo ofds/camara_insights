@@ -30,6 +30,10 @@ class ProposicaoSchema(BaseModel):
     magnitude: Optional[str] = None
     tags: Optional[List[str]] = None
     urlInteiroTeor: Optional[str] = None
+    uriAutores: Optional[str] = None
+    descricaoTipo: Optional[str] = None
+    ementaDetalhada: Optional[str] = None
+    keywords: Optional[str] = None
 
     class Config:
         from_attributes = True
