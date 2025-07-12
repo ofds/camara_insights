@@ -6,9 +6,11 @@ export interface ApiProposition {
   sigla_tipo: string;
   numero: number;
   ano: number;
-  ementa: string; // Esta é a descrição/resumo
+  ementa: string;
   data_apresentacao: string;
   impact_score: number | null;
+  magnitude: string | null;      // Adicionado
+  tags: string[] | null;         // Adicionado
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
