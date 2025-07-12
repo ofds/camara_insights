@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import { PlusIcon } from '@phosphor-icons/react/dist/ssr/Plus';
 import { useCallback, useEffect, useState } from 'react';
 import { ProposalsTable } from '@/components/dashboard/proposal/proposals-table';
+import { ProposalsFilters } from '@/components/dashboard/proposal/proposals-filters';
 import type { Proposal } from '@/types/proposition';
 import { getPropositions } from '@/services/proposicoes.service';
 
@@ -17,27 +18,37 @@ export default function Page(): React.JSX.Element {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [filters, setFilters] = useState<{ [key: string]: string }>({});
+  const [sort, setSort] = useState<{ property: keyof Proposal; order: 'asc' | 'desc' }>({
+    property: 'createdAt',
+    order: 'desc',
+  });
 
   const fetchProposals = useCallback(async () => {
     try {
       setLoading(true);
+      const sortString = `${sort.property}:${sort.order}`;
       const response = await getPropositions({
         limit: rowsPerPage,
         skip: page * rowsPerPage,
-        sort: 'dataApresentacao:desc'
+        sort: sortString,
+        filters,
       });
       
       setProposals(response.map((prop) => ({
         id: prop.id.toString(),
         title: prop.ementa,
         status: prop.statusProposicao_descricaoSituacao || 'Em análise',
-        author: 'Autor desconhecido', // Temporarily hardcoded until backend provides author info
-        createdAt: new Date(prop.dataApresentacao)
+        author: 'Autor desconhecido', // Temporarily hardcoded
+        createdAt: new Date(prop.dataApresentacao),
+        siglaTipo: prop.siglaTipo,
+        numero: prop.numero,
+        ano: prop.ano,
+        impact_score: prop.impact_score,
       })));
       
-      // Note: The API currently doesn't return total count
-      // We'll use a placeholder value for now
-      setTotalCount(100);
+      // Using a placeholder for total count as the API doesn't provide it
+      setTotalCount(100); 
       setError(null);
     } catch (error_) {
       setError('Falha ao carregar as propostas');
@@ -45,7 +56,7 @@ export default function Page(): React.JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [page, rowsPerPage]);
+  }, [page, rowsPerPage, sort, filters]);
 
   useEffect(() => {
     fetchProposals();
@@ -58,6 +69,15 @@ export default function Page(): React.JSX.Element {
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
+  };
+  
+  const handleSort = (property: keyof Proposal) => {
+    const isAsc = sort.property === property && sort.order === 'asc';
+    setSort({ property, order: isAsc ? 'desc' : 'asc' });
+  };
+
+  const handleFilterChange = (value: string) => {
+    setFilters({ ...filters, ementa: value });
   };
 
   return (
@@ -73,6 +93,7 @@ export default function Page(): React.JSX.Element {
           </Button>
         </div>
       </Stack>
+      <ProposalsFilters onFilterChange={handleFilterChange} />
       <ProposalsTable
         count={totalCount}
         page={page}
@@ -80,6 +101,9 @@ export default function Page(): React.JSX.Element {
         rowsPerPage={rowsPerPage}
         onPageChange={handlePageChange}
         onRowsPerPageChange={handleRowsPerPageChange}
+        onSort={handleSort}
+        order={sort.order}
+        orderBy={sort.property}
         loading={loading}
       />
     </Stack>

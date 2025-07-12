@@ -4,4 +4,8 @@ export interface Proposal {
   status: string;
   author: string;
   createdAt: Date;
+  siglaTipo: string;
+  numero: number;
+  ano: number;
+  impact_score: number | null;
 }

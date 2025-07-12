@@ -14,6 +14,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import dayjs from 'dayjs';
 import Skeleton from '@mui/material/Skeleton';
+import { TableSortLabel } from '@mui/material';
 
 import { useSelection } from '@/hooks/use-selection';
 import type { Proposal } from '@/types/proposition';
@@ -25,6 +26,9 @@ interface ProposalsTableProps {
   rowsPerPage: number;
   onPageChange: (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => void;
   onRowsPerPageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSort: (property: keyof Proposal) => void;
+  order: 'asc' | 'desc';
+  orderBy: keyof Proposal;
   loading?: boolean;
 }
 
@@ -35,6 +39,9 @@ export function ProposalsTable({
   rowsPerPage,
   onPageChange,
   onRowsPerPageChange,
+  onSort,
+  order,
+  orderBy,
   loading = false,
 }: ProposalsTableProps): React.JSX.Element {
   const rowIds = React.useMemo(() => {
@@ -49,7 +56,7 @@ export function ProposalsTable({
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
-        <Table sx={{ minWidth: '800px' }}>
+        <Table sx={{ minWidth: '1200px' }}>
           <TableHead>
             <TableRow>
               <TableCell padding="checkbox">
@@ -65,10 +72,26 @@ export function ProposalsTable({
                   }}
                 />
               </TableCell>
-              <TableCell>Title</TableCell>
+              <TableCell sortDirection={orderBy === 'title' ? order : false}>
+                <TableSortLabel active={orderBy === 'title'} direction={orderBy === 'title' ? order : 'asc'} onClick={() => onSort('title')}>
+                  Title
+                </TableSortLabel>
+              </TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Author</TableCell>
-              <TableCell>Created</TableCell>
+              <TableCell sortDirection={orderBy === 'createdAt' ? order : false}>
+                <TableSortLabel active={orderBy === 'createdAt'} direction={orderBy === 'createdAt' ? order : 'asc'} onClick={() => onSort('createdAt')}>
+                  Created
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Number</TableCell>
+              <TableCell>Year</TableCell>
+              <TableCell sortDirection={orderBy === 'impact_score' ? order : false}>
+                 <TableSortLabel active={orderBy === 'impact_score'} direction={orderBy === 'impact_score' ? order : 'asc'} onClick={() => onSort('impact_score')}>
+                  Impact Score
+                </TableSortLabel>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -78,17 +101,8 @@ export function ProposalsTable({
                   <TableCell padding="checkbox">
                     <Skeleton variant="rectangular" width={24} height={24} />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton variant="text" width="80%" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="text" width="60%" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="text" width="70%" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton variant="text" width="50%" />
+                  <TableCell colSpan={8}>
+                    <Skeleton variant="text" />
                   </TableCell>
                 </TableRow>
               ))
@@ -111,11 +125,15 @@ export function ProposalsTable({
                       />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="subtitle2">{row.title}</Typography>
+                      <Typography variant="subtitle2" noWrap sx={{ maxWidth: '300px' }}>{row.title}</Typography>
                     </TableCell>
                     <TableCell>{row.status}</TableCell>
                     <TableCell>{row.author}</TableCell>
                     <TableCell>{dayjs(row.createdAt).format('MMM D, YYYY')}</TableCell>
+                    <TableCell>{row.siglaTipo}</TableCell>
+                    <TableCell>{row.numero}</TableCell>
+                    <TableCell>{row.ano}</TableCell>
+                    <TableCell>{row.impact_score}</TableCell>
                   </TableRow>
                 );
               })
