@@ -1,7 +1,7 @@
 # camara_insights/app/infra/db/crud/entidades.py
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import DateTime, Date
-from sqlalchemy import desc, asc 
+from sqlalchemy import desc, asc, func
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
@@ -102,7 +102,9 @@ def get_deputados(
     deputados = query.order_by(models.Deputado.ultimoStatus_nome).offset(skip).limit(limit).all()
     
     return deputados
-
+"""
+    Busca uma lista paginada de proposições, com filtros e ordenação opcionais.
+    """
 def get_proposicoes(
     db: Session,
     skip: int = 0,
@@ -111,10 +113,7 @@ def get_proposicoes(
     ano: Optional[int] = None,
     sort: Optional[str] = None
 ):
-    """
-    Busca uma lista paginada de proposições, com filtros e ordenação opcionais.
-    """
-    # Query base agora une Proposicao com ProposicaoAIData
+    # 1. Simplificamos a query para buscar o campo 'tags' como texto bruto.
     query = db.query(
         models.Proposicao.id,
         models.Proposicao.siglaTipo,
@@ -124,19 +123,22 @@ def get_proposicoes(
         models.Proposicao.dataApresentacao,
         models.Proposicao.statusProposicao_descricaoSituacao,
         models.Proposicao.statusProposicao_descricaoTramitacao,
-        models_ai.ProposicaoAIData.impact_score
+        models_ai.ProposicaoAIData.impact_score,
+        models_ai.ProposicaoAIData.summary,
+        models_ai.ProposicaoAIData.scope,
+        models_ai.ProposicaoAIData.magnitude,
+        models_ai.ProposicaoAIData.tags  # Buscamos o campo de texto diretamente
     ).outerjoin(
         models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
     )
 
-
-    # Lógica de Filtros
+    # Lógica de Filtros (sem alterações)
     if sigla_tipo:
         query = query.filter(models.Proposicao.siglaTipo == sigla_tipo.upper())
     if ano:
         query = query.filter(models.Proposicao.ano == ano)
 
-    # Lógica de Ordenação Atualizada
+    # Lógica de Ordenação (sem alterações)
     allowed_sort_fields = {"id", "ano", "dataApresentacao", "impact_score"}
     sort_column = models.Proposicao.ano
     direction_func = desc
@@ -145,7 +147,6 @@ def get_proposicoes(
         try:
             field_name, direction_str = sort.split(":")
             if field_name in allowed_sort_fields:
-                # O campo impact_score pertence ao modelo ProposicaoAIData
                 if field_name == "impact_score":
                     sort_column = models_ai.ProposicaoAIData.impact_score
                 else:
@@ -154,21 +155,19 @@ def get_proposicoes(
                 if direction_str.lower() == "asc":
                     direction_func = asc
         except ValueError:
-            pass # Usa o padrão se o formato for inválido
+            pass
 
-    # Ordenação padrão ou definida
-    query = query.order_by(direction_func(sort_column))
+    query = query.order_by(direction_func(sort_column).nullslast())
     
-    # Adicione uma ordenação secundária para garantir resultados consistentes
     if sort_column != models.Proposicao.id:
-        query = query.order_by(direction_func(sort_column), desc(models.Proposicao.id))
+        query = query.order_by(direction_func(sort_column).nullslast(), desc(models.Proposicao.id))
 
     results = query.offset(skip).limit(limit).all()
 
-    # O SQLAlchemy retorna uma lista de Tuples, então convertemos para um formato de dicionário
-    # para que o Pydantic possa validar e criar o schema de resposta.
-    proposicoes_dict = [
-        {
+    # 2. Processamos as tags aqui, no código Python.
+    proposicoes_dict = []
+    for p in results:
+        proposicoes_dict.append({
             'id': p.id,
             'siglaTipo': p.siglaTipo,
             'numero': p.numero,
@@ -177,9 +176,13 @@ def get_proposicoes(
             'dataApresentacao': p.dataApresentacao,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
-            'impact_score': p.impact_score
-        } for p in results
-    ]
+            'impact_score': p.impact_score,
+            'summary': p.summary,
+            'scope': p.scope,
+            'magnitude': p.magnitude,
+            # Verificamos se 'p.tags' não é None antes de fazer o split.
+            'tags': [tag.strip() for tag in p.tags] if p.tags else []
+        })
 
     return proposicoes_dict
 

@@ -25,6 +25,10 @@ class ProposicaoSchema(BaseModel):
     statusProposicao_descricaoSituacao: Optional[str] = None
     statusProposicao_descricaoTramitacao: Optional[str] = None
     impact_score: Optional[int] = None
+    summary: Optional[str] = None
+    scope: Optional[str] = None
+    magnitude: Optional[str] = None
+    tags: Optional[List[str]] = None
 
     class Config:
         from_attributes = True
