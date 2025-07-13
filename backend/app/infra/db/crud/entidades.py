@@ -135,10 +135,13 @@ def get_proposicoes(
     )
 
     # Adiciona lógica de filter dinâmico
-    if filters:
-        for field, value in filters.items():
-            if hasattr(models.Proposicao, field):
-                query = query.filter(getattr(models.Proposicao, field) == value)
+    if filters and 'ementa' in filters:
+        ementa_value = filters.get('ementa')
+        if ementa_value:
+            query = query.filter(models.Proposicao.ementa.ilike(f"%{ementa_value}%"))
+        
+        # 2. Remove 'ementa' so it's not processed again by the helper function
+        del filters['ementa']
 
     # Define allowed fields for sorting and security context awareness
     allowed_sort_fields = {
