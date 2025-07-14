@@ -24,7 +24,7 @@ function DashboardPage() {
           getHighImpactPropositions()
         ]);
         setEventos(eventosData);
-        setPropositions(proposicoesData);
+        setPropositions(proposicoesData.proposicoes);
       } catch (e: any) {
         setError(e.message || "Ocorreu um erro desconhecido.");
       } finally {

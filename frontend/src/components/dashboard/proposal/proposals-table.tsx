@@ -145,7 +145,7 @@ export function ProposalsTable({
   loading = false,
 }: ProposalsTableProps): React.JSX.Element {
   const sortableFields: { id: string; label: string }[] = [
-    { id: 'ementa', label: 'Título' },
+    { id: 'title', label: 'Título' },
     { id: 'statusProposicao_descricaoSituacao', label: 'Status' },
     { id: 'author', label: 'Autor' },
     { id: 'dataApresentacao', label: 'Criação' },

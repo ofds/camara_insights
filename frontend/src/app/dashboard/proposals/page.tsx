@@ -55,7 +55,7 @@ export default function Page(): React.JSX.Element {
   const displayRows = React.useMemo((): Proposal[] => {
     return rawProposals.map((prop) => ({
       id: prop.id.toString(),
-      title: prop.ementa,
+      title: `${prop.siglaTipo} ${prop.numero}/${prop.ano}`,
       status: prop.statusProposicao_descricaoSituacao || 'Em análise',
       author: prop.autor || 'Autor desconhecido',
       createdAt: new Date(prop.dataApresentacao),
