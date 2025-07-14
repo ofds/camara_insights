@@ -15,6 +15,10 @@ export interface ProposalDetails {
   votacoes: any[];
 }
 
+export interface PaginatedProposals {
+  proposicoes: ApiProposal[];
+  total_count: number;
+}
 
 /**
  * Fetches a list of propositions from the backend API with support for pagination, sorting, and dynamic filters.
@@ -35,7 +39,7 @@ export async function getPropositions({
   skip: number;
   sort: string;
   filters: { [key: string]: string | number };
-}): Promise<ApiProposal[]> {
+}): Promise<PaginatedProposals> {
   const params = new URLSearchParams();
   params.append('limit', String(limit));
   params.append('skip', String(skip));
@@ -55,7 +59,7 @@ export async function getPropositions({
     throw new Error('Network response was not ok');
   }
 
-  const data = await response.json();
+  const data: PaginatedProposals = await response.json(); // Expect the new structure
   return data;
 }
 

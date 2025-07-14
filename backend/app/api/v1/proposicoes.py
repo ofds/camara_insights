@@ -22,7 +22,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/proposicoes", response_model=List[schemas.ProposicaoSchema])
+@router.get("/proposicoes", response_model=schemas.ProposicaoPaginatedResponse)
 def read_proposicoes(
     req: Request,
     db: Session = Depends(get_db),
@@ -36,7 +36,7 @@ def read_proposicoes(
     filter_exclude_params = {'skip', 'limit', 'sort'}
     filters = {k: v for k, v in req.query_params.items() if k not in filter_exclude_params}
 
-    proposicoes = crud.get_proposicoes(
+    result = crud.get_proposicoes(
         db=db,
         skip=skip,
         limit=limit,
@@ -44,7 +44,7 @@ def read_proposicoes(
         sort=sort
     )
 
-    return proposicoes
+    return result
 
 @router.get("/proposicoes/{proposicao_id}", response_model=schemas.ProposicaoSchema)
 def read_proposicao(proposicao_id: int, db: Session = Depends(get_db)):

@@ -29,15 +29,16 @@ export default function Page(): React.JSX.Element {
     try {
       setLoading(true);
       const sortString = `${sort.property}:${sort.order}`;
-      const response = await getPropositions({
+      // --- MODIFIED: The function now returns an object ---
+      const { proposicoes, total_count } = await getPropositions({
         limit: rowsPerPage,
         skip: page * rowsPerPage,
         sort: sortString,
         filters,
       });
 
-      setRawProposals(response);
-      setTotalCount(100); // Using a placeholder for total count as the API doesn't provide it
+      setRawProposals(proposicoes);
+      setTotalCount(total_count); // Using a placeholder for total count as the API doesn't provide it
       setError(null);
     } catch (error_) {
       setError('Falha ao carregar as propostas');

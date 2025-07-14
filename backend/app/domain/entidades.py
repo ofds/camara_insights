@@ -159,3 +159,8 @@ class GrupoSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ProposicaoPaginatedResponse(BaseModel):
+    proposicoes: List[ProposicaoSchema]
+    total_count: int

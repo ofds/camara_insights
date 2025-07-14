@@ -151,6 +151,9 @@ def get_proposicoes(
         first_author_subquery, models.Proposicao.id == first_author_subquery.c.proposicao_id  # Faz o JOIN com a subquery
     )
 
+    total_count = query.count()
+
+
     # Lógica de filtro dinâmico (mantida como no original)
     if filters and 'ementa' in filters:
         ementa_value = filters.get('ementa')
@@ -210,7 +213,7 @@ def get_proposicoes(
         }
         proposicoes_list.append(prop_data)
 
-    return proposicoes_list
+    return {"proposicoes": proposicoes_list, "total_count": total_count}
 def get_partidos(
     db: Session,
     skip: int = 0,
