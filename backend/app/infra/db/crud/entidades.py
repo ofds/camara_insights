@@ -1,11 +1,14 @@
 # camara_insights/app/infra/db/crud/entidades.py
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import DateTime, Date, desc, asc, func
+from sqlalchemy import DateTime, Date, desc, asc, func, text
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 from app.domain.entidades import ProposicaoSchema
+from .utils import apply_filters_and_sorting
+import json
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 
 def _flatten_dict(d, parent_key='', sep='_'):
@@ -111,7 +114,7 @@ def get_deputados(
 
     # Aplica paginação e retorna resultados
     return query_result.offset(skip).limit(limit).all()
-from .utils import apply_filters_and_sorting
+
 
 def get_proposicoes(
     db: Session,
@@ -120,23 +123,18 @@ def get_proposicoes(
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None
 ):
-    """
-    Busca uma lista paginada de proposições, incluindo o autor, com filtros e ordenação.
-    """
-    # --- NOVO: Subquery para buscar o nome do primeiro autor ---
     Autor = aliased(models.Deputado)
-    first_author_subquery = (
+
+    author_subquery = (
         db.query(
-            models.proposicao_autores.c.proposicao_id,
-            func.min(Autor.ultimoStatus_nome).label("autor_nome")
+            models.proposicao_autores.c.proposicao_id.label("pid"),
+            func.group_concat(Autor.nomeCivil, ', ').label("autores_db")
         )
         .join(Autor, models.proposicao_autores.c.deputado_id == Autor.id)
         .group_by(models.proposicao_autores.c.proposicao_id)
         .subquery()
     )
-    # --- FIM DA SUBQUERY ---
 
-    # --- MODIFICADO: Adiciona o autor à query principal ---
     query = db.query(
         models.Proposicao,
         models_ai.ProposicaoAIData.impact_score,
@@ -144,55 +142,52 @@ def get_proposicoes(
         models_ai.ProposicaoAIData.scope,
         models_ai.ProposicaoAIData.magnitude,
         models_ai.ProposicaoAIData.tags,
-        first_author_subquery.c.autor_nome  # Adiciona o nome do autor ao SELECT
+        author_subquery.c.autores_db
     ).outerjoin(
         models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
     ).outerjoin(
-        first_author_subquery, models.Proposicao.id == first_author_subquery.c.proposicao_id  # Faz o JOIN com a subquery
+        author_subquery, models.Proposicao.id == author_subquery.c.pid
     )
 
-    total_count = query.count()
+    if filters:
+        filters_copy = filters.copy()
+        if 'ementa' in filters_copy:
+            ementa_value = filters_copy.pop('ementa', None)
+            if ementa_value:
+                query = query.filter(models.Proposicao.ementa.ilike(f"%{ementa_value}%"))
+        filters = filters_copy
 
-
-    # Lógica de filtro dinâmico (mantida como no original)
-    if filters and 'ementa' in filters:
-        ementa_value = filters.get('ementa')
-        if ementa_value:
-            query = query.filter(models.Proposicao.ementa.ilike(f"%{ementa_value}%"))
-        del filters['ementa']
-
-    # Campos permitidos para ordenação (mantido como no original)
     allowed_sort_fields = {
         "id": models.Proposicao.id,
         "ano": models.Proposicao.ano,
         "dataApresentacao": models.Proposicao.dataApresentacao,
         "impact_score": models_ai.ProposicaoAIData.impact_score
-        # Você poderia adicionar 'autor' aqui se quisesse ordenar por nome
-        # "autor": first_author_subquery.c.autor_nome
     }
 
-    # Aplica filtros e ordenação (mantido como no original)
+    total_count = query.count()
+
     query_result = apply_filters_and_sorting(
-        query,
-        model=models.Proposicao,
-        filters=filters,
-        sort=sort,
-        allowed_sort_fields=allowed_sort_fields,
-        default_sort_field="dataApresentacao"
+        query, model=models.Proposicao, filters=filters, sort=sort,
+        allowed_sort_fields=allowed_sort_fields, default_sort_field="dataApresentacao"
     )
 
-    # --- MODIFICADO: Construção da resposta final ---
     results = query_result.offset(skip).limit(limit).all()
     proposicoes_list = []
-    # Desempacota o 'autor_nome' adicional que vem da query
-    for p, impact_score, summary, scope, magnitude, tags, autor_nome in results:
+    for p, impact_score, summary, scope, magnitude, tags, autores_db in results:
+        final_author_name = autores_db or (
+            "Poder Executivo" if p.uriAutores and "orgaos" in p.uriAutores else
+            p.descricaoTipo if p.descricaoTipo and "Comissão" in p.descricaoTipo else
+            "Mesa Diretora" if p.descricaoTipo and "Mesa Diretora" in p.descricaoTipo else
+            "Autor não identificado"
+        )
+
         prop_data = {
             'id': p.id,
             'siglaTipo': p.siglaTipo,
             'numero': p.numero,
             'ano': p.ano,
             'ementa': p.ementa,
-            'dataApresentacao': p.dataApresentacao,
+            'dataApresentacao': p.dataApresentacao.isoformat() if p.dataApresentacao else None,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
             'uriAutores': p.uriAutores,
@@ -200,11 +195,7 @@ def get_proposicoes(
             'ementaDetalhada': p.ementaDetalhada,
             'keywords': p.keywords,
             'urlInteiroTeor': p.urlInteiroTeor,
-            
-            # --- NOVO: Adiciona o autor ao dicionário de resposta ---
-            'autor': autor_nome or 'Autor não identificado',
-
-            # Campos da IA (mantidos como no original)
+            'autor': final_author_name,
             'impact_score': impact_score or 0.0,
             'summary': summary,
             'scope': scope,
@@ -212,8 +203,9 @@ def get_proposicoes(
             'tags': tags if tags else [],
         }
         proposicoes_list.append(prop_data)
-
     return {"proposicoes": proposicoes_list, "total_count": total_count}
+
+
 def get_partidos(
     db: Session,
     skip: int = 0,
