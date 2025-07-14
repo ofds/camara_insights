@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { Box, CircularProgress, Alert } from '@mui/material';
 
-import WeeklyCalendar from '@/components/dashboard/WeeklyCalendar';
+import WeeklyCalendar from '@/components/dashboard/overview/WeeklyCalendar';
 import { getEventosDaSemana, type ApiEvent } from '@/services/eventos.service';
 import { getHighImpactPropositions, type ApiProposition } from '@/services/proposicoes.service';
-import HighImpactPropositionsCard from '@/components/dashboard/HighImpactPropositionsCard';
+import HighImpactPropositionsCard from '@/components/dashboard/overview/HighImpactPropositionsCard';
 
 function DashboardPage() {
   const [eventos, setEventos] = useState<ApiEvent[]>([]);
