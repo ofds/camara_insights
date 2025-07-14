@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from datetime import date, datetime
 from typing import List, Optional
 
+# --- Schemas Existentes ---
+
 class DeputadoSchema(BaseModel):
     id: int
     nomeCivil: Optional[str] = None
@@ -77,6 +79,82 @@ class VotacaoSchema(BaseModel):
     dataHoraRegistro: Optional[datetime] = None
     siglaOrgao: Optional[str] = None
     descricao: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Novos Schemas ---
+
+class DespesaSchema(BaseModel):
+    id: int
+    deputado_id: int
+    ano: Optional[int] = None
+    mes: Optional[int] = None
+    tipoDespesa: Optional[str] = None
+    dataDocumento: Optional[date] = None
+    valorLiquido: Optional[float] = None
+    nomeFornecedor: Optional[str] = None
+    urlDocumento: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class DiscursoSchema(BaseModel):
+    id: int
+    deputado_id: int
+    dataHoraInicio: Optional[datetime] = None
+    siglaTipoDiscurso: Optional[str] = None
+    keywords: Optional[str] = None
+    sumario: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class VotoSchema(BaseModel):
+    id: int
+    votacao_id: str
+    deputado_id: int
+    voto: Optional[str] = None
+    # Opcional: Adicionar um schema simplificado do deputado para mostrar nome/partido
+    # deputado: Optional[DeputadoSchema] = None
+
+    class Config:
+        from_attributes = True
+
+class TramitacaoSchema(BaseModel):
+    id: int
+    proposicao_id: int
+    dataHora: Optional[datetime] = None
+    sequencia: Optional[int] = None
+    siglaOrgao: Optional[str] = None
+    descricaoTramitacao: Optional[str] = None
+    despacho: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class FrenteSchema(BaseModel):
+    id: int
+    titulo: Optional[str] = None
+    idLegislatura: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class BlocoSchema(BaseModel):
+    id: str
+    nome: Optional[str] = None
+    idLegislatura: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class GrupoSchema(BaseModel):
+    id: int
+    nome: Optional[str] = None
+    sigla: Optional[str] = None
+    dataInicio: Optional[date] = None
+    dataFim: Optional[date] = None
 
     class Config:
         from_attributes = True
