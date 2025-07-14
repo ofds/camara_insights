@@ -8,7 +8,7 @@ from dateutil.parser import parse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import Date, DateTime
 from app.infra.db.session import SessionLocal
@@ -17,10 +17,7 @@ from app.infra.camara_api import camara_api_client
 from app.infra.db.models import entidades as models
 
 # --- Constantes de Otimização ---
-# Limita o número de requisições simultâneas à API para evitar erros 429.
-# Um valor entre 10 e 20 é geralmente seguro.
 CONCURRENCY_LIMIT = 10
-# Define o tamanho dos lotes para processamento em memória e inserção no banco.
 BATCH_SIZE = 50
 
 # --- Funções de Sincronização Principais ---
@@ -28,7 +25,6 @@ BATCH_SIZE = 50
 async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
     """
     Busca todos os dados de um endpoint paginado da API da Câmara.
-    (Otimizado com paginação manual para maior robustez)
     """
     all_data: List[Dict[str, Any]] = []
     page = 1
@@ -100,7 +96,7 @@ async def fetch_with_semaphore(semaphore: asyncio.Semaphore, endpoint: str, para
 
 async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}):
     """
-    Função genérica otimizada para sincronizar entidades (lista -> detalhes) com concorrência controlada.
+    Função genérica otimizada para sincronizar entidades (lista -> detalhes).
     """
     print(f"\n--- Iniciando sincronização com detalhes para {model.__tablename__}... ---")
     
@@ -110,7 +106,7 @@ async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: s
         print(f"Nenhum item encontrado para {model.__tablename__}.")
         return
 
-    print(f"{len(summary_data)} itens descobertos para {model.__tablename__}. Buscando detalhes...")
+    print(f"{len(summary_data)} itens descobertos. Buscando detalhes...")
     
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     all_tasks = []
@@ -126,68 +122,103 @@ async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: s
             if response and 'dados' in response:
                 upsert_entidade(db, model, response['dados'])
         db.commit()
-        print(f"Lote {i//BATCH_SIZE + 1} de {len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
+        print(f"Lote {i//BATCH_SIZE + 1}/{len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
         
     print(f"Sincronização com detalhes para {model.__tablename__} concluída.")
 
 async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model: Type[Base], endpoint_template: str, child_fk_name: str, params: Dict[str, Any] = {}, paginated: bool = True):
     """
-    Sincroniza uma entidade 'filha' com concorrência controlada e processamento em lotes.
+    Sincroniza uma entidade 'filha' de forma otimizada.
     """
-    print(f"\n--- Iniciando sincronização de entidade filha: {child_model.__tablename__} (Paginado: {paginated}) ---")
+    print(f"\n--- Sincronizando entidade filha: {child_model.__tablename__} ---")
     parent_ids: List[Tuple[Any]] = db.query(parent_model.id).all()
-
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     
     async def fetch_child_data(parent_id):
         endpoint = endpoint_template.format(id=parent_id)
-        return await fetch_with_semaphore(semaphore, endpoint, params) if paginated else await fetch_with_semaphore(semaphore, endpoint)
+        if paginated:
+            return await fetch_and_process_paginated_data(endpoint, params)
+        else:
+            response = await fetch_with_semaphore(semaphore, endpoint)
+            return response.get('dados', []) if response else []
 
     all_child_data_to_insert = []
-    
     for i in range(0, len(parent_ids), BATCH_SIZE):
         parent_batch = parent_ids[i:i + BATCH_SIZE]
         tasks = [fetch_child_data(pid) for (pid,) in parent_batch]
         results = await asyncio.gather(*tasks)
         
-        batch_child_data = []
-        for idx, result in enumerate(results):
-            child_data_list = result if paginated else (result.get('dados') if result else [])
-            if not child_data_list:
-                continue
-
+        for idx, child_data_list in enumerate(results):
+            if not child_data_list: continue
             current_parent_id = parent_batch[idx][0]
             for child_data in child_data_list:
                 child_data[child_fk_name] = current_parent_id
                 child_data.pop('id', None)
-                batch_child_data.append(child_data)
-        
-        if batch_child_data:
-            all_child_data_to_insert.extend(batch_child_data)
-        
+                all_child_data_to_insert.append(child_data)
         print(f"Lote de pais {i//BATCH_SIZE + 1} para {child_model.__tablename__} processado.")
 
     if all_child_data_to_insert:
         print(f"Iniciando inserção em massa de {len(all_child_data_to_insert)} registros para {child_model.__tablename__}...")
-        # A conversão de tipos é feita aqui, antes da inserção em massa
-        for child_data in all_child_data_to_insert:
-            model_columns = {c.name: c.type for c in child_model.__table__.columns}
-            for key, value in child_data.items():
-                if value is None: continue
-                column_type = model_columns.get(key)
-                if isinstance(column_type, (Date, DateTime)) and isinstance(value, str):
-                    try:
-                        parsed_datetime = parse(value)
-                        child_data[key] = parsed_datetime.date() if isinstance(column_type, Date) else parsed_datetime
-                    except (ValueError, TypeError):
-                        child_data[key] = None
-        
         db.bulk_insert_mappings(child_model, all_child_data_to_insert)
         db.commit()
-
     print(f"Sincronização de {child_model.__tablename__} concluída.")
 
+async def sync_proposicao_autores(db: Session):
+    """
+    Sincroniza a tabela de associação (M2M) entre proposições e seus autores.
+    """
+    print("\n--- Iniciando sincronização de autores de proposições (M2M) ---")
+
+    proposicoes_uris: List[Tuple[int, str]] = db.query(
+        models.Proposicao.id,
+        models.Proposicao.uriAutores
+    ).filter(models.Proposicao.uriAutores.isnot(None)).all()
+
+    if not proposicoes_uris:
+        print("Nenhuma proposição com autores para sincronizar.")
+        return
+
+    print(f"{len(proposicoes_uris)} proposições com URIs de autores encontradas.")
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    all_autores_to_insert = []
+
+    async def fetch_autores(proposicao_id: int, uri: str):
+        endpoint = uri.replace(camara_api_client.base_url, "")
+        response = await fetch_with_semaphore(semaphore, endpoint)
+        return proposicao_id, response.get('dados', []) if response else []
+
+    for i in range(0, len(proposicoes_uris), BATCH_SIZE):
+        batch_uris = proposicoes_uris[i:i + BATCH_SIZE]
+        tasks = [fetch_autores(pid, uri) for pid, uri in batch_uris]
+        results = await asyncio.gather(*tasks)
+
+        for proposicao_id, autores_data in results:
+            for autor_data in autores_data:
+                autor_uri = autor_data.get("uri", "")
+                if "/deputados/" in autor_uri:
+                    try:
+                        deputado_id = int(autor_uri.split("/")[-1])
+                        all_autores_to_insert.append({
+                            "proposicao_id": proposicao_id,
+                            "deputado_id": deputado_id
+                        })
+                    except (ValueError, IndexError):
+                        pass
+        print(f"Lote {i//BATCH_SIZE + 1} de autores de proposições processado.")
+
+    if all_autores_to_insert:
+        print(f"Inserindo {len(all_autores_to_insert)} links autor-proposição...")
+        stmt = insert(models.proposicao_autores).values(all_autores_to_insert)
+        stmt = stmt.on_conflict_do_nothing(index_elements=['proposicao_id', 'deputado_id'])
+        db.execute(stmt)
+        db.commit()
+    print("Sincronização de autores de proposições concluída.")
+
+
 async def main():
+    """
+    Função principal que orquestra todas as etapas de sincronização.
+    """
     db = SessionLocal()
     try:
         start_date = "2024-01-01"
@@ -202,18 +233,14 @@ async def main():
         await sync_entidade_com_detalhes(db, models.Votacao, "/votacoes", params={'dataInicio': start_date, 'itens': 100, 'ordem': 'ASC', 'ordenarPor': 'id'})
         
         print("\n--- ETAPA 2: SINCRONIZANDO FRENTES, BLOCOS E GRUPOS ---")
-        frentes_data = await fetch_and_process_paginated_data("/frentes", {'itens': 100})
-        for item in frentes_data: upsert_entidade(db, models.Frente, item)
-        
-        blocos_data = await fetch_and_process_paginated_data("/blocos", {'itens': 100})
-        for item in blocos_data: upsert_entidade(db, models.Bloco, item)
-
-        grupos_data = await fetch_and_process_paginated_data("/grupos", {'itens': 100})
-        for item in grupos_data: upsert_entidade(db, models.Grupo, item)
+        for model, endpoint in [(models.Frente, "/frentes"), (models.Bloco, "/blocos"), (models.Grupo, "/grupos")]:
+            data = await fetch_and_process_paginated_data(endpoint, {'itens': 100})
+            for item in data: upsert_entidade(db, model, item)
         db.commit()
         print("Frentes, Blocos e Grupos sincronizados.")
 
-        print("\n--- ETAPA 3: LIMPANDO DADOS DE ENTIDADES FILHAS ANTES DA SINCRONIZAÇÃO ---")
+        print("\n--- ETAPA 3: LIMPANDO DADOS DE RELACIONAMENTOS ---")
+        db.execute(models.proposicao_autores.delete())
         db.execute(models.Despesa.__table__.delete())
         db.execute(models.Discurso.__table__.delete())
         db.execute(models.Tramitacao.__table__.delete())
@@ -221,16 +248,18 @@ async def main():
         db.commit()
         print("Limpeza concluída.")
 
-        print("\n--- ETAPA 4: SINCRONIZANDO ENTIDADES FILHAS ---")
+        print("\n--- ETAPA 4: SINCRONIZANDO RELACIONAMENTOS E ENTIDADES FILHAS ---")
+        await sync_proposicao_autores(db) # <-- LÓGICA DE AUTORES INCORPORADA AQUI
         await sync_child_entidade(db, models.Deputado, models.Despesa, "/deputados/{id}/despesas", "deputado_id", params={'ano': current_year, 'itens': 100})
         await sync_child_entidade(db, models.Deputado, models.Discurso, "/deputados/{id}/discursos", "deputado_id", params={'dataInicio': start_date, 'itens': 100})
         await sync_child_entidade(db, models.Proposicao, models.Tramitacao, "/proposicoes/{id}/tramitacoes", "proposicao_id", paginated=False)
         await sync_child_entidade(db, models.Votacao, models.Voto, "/votacoes/{id}/votos", "votacao_id", paginated=False)
 
     finally:
+        await camara_api_client.close()
         db.close()
 
 if __name__ == "__main__":
-    print("--- INICIANDO SINCRONIZAÇÃO GERAL (OTIMIZADA E SEQUENCIAL) ---")
+    print("--- INICIANDO SINCRONIZAÇÃO GERAL (OTIMIZADA) ---")
     asyncio.run(main())
     print("\n--- SINCRONIZAÇÃO GERAL CONCLUÍDA ---")

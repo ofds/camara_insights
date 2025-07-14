@@ -32,4 +32,5 @@ export interface ApiProposal {
   scope: string | null;
   magnitude: string | null;
   tags: string[] | null;
+  autor: string | null;
 }

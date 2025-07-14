@@ -36,6 +36,7 @@ class ProposicaoSchema(BaseModel):
     descricaoTipo: Optional[str] = None
     ementaDetalhada: Optional[str] = None
     keywords: Optional[str] = None
+    autor: Optional[str] = None
 
     class Config:
         from_attributes = True

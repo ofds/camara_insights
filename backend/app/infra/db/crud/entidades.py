@@ -121,40 +121,54 @@ def get_proposicoes(
     sort: Optional[str] = None
 ):
     """
-    Busca uma lista paginada de proposições, com filtros e ordenação por campo de impacto AI.
+    Busca uma lista paginada de proposições, incluindo o autor, com filtros e ordenação.
     """
+    # --- NOVO: Subquery para buscar o nome do primeiro autor ---
+    Autor = aliased(models.Deputado)
+    first_author_subquery = (
+        db.query(
+            models.proposicao_autores.c.proposicao_id,
+            func.min(Autor.ultimoStatus_nome).label("autor_nome")
+        )
+        .join(Autor, models.proposicao_autores.c.deputado_id == Autor.id)
+        .group_by(models.proposicao_autores.c.proposicao_id)
+        .subquery()
+    )
+    # --- FIM DA SUBQUERY ---
+
+    # --- MODIFICADO: Adiciona o autor à query principal ---
     query = db.query(
         models.Proposicao,
         models_ai.ProposicaoAIData.impact_score,
         models_ai.ProposicaoAIData.summary,
         models_ai.ProposicaoAIData.scope,
         models_ai.ProposicaoAIData.magnitude,
-        models_ai.ProposicaoAIData.tags
+        models_ai.ProposicaoAIData.tags,
+        first_author_subquery.c.autor_nome  # Adiciona o nome do autor ao SELECT
     ).outerjoin(
         models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
+    ).outerjoin(
+        first_author_subquery, models.Proposicao.id == first_author_subquery.c.proposicao_id  # Faz o JOIN com a subquery
     )
 
-    # Adiciona lógica de filter dinâmico
+    # Lógica de filtro dinâmico (mantida como no original)
     if filters and 'ementa' in filters:
         ementa_value = filters.get('ementa')
         if ementa_value:
             query = query.filter(models.Proposicao.ementa.ilike(f"%{ementa_value}%"))
-        
-        # 2. Remove 'ementa' so it's not processed again by the helper function
         del filters['ementa']
 
-    # Define allowed fields for sorting and security context awareness
+    # Campos permitidos para ordenação (mantido como no original)
     allowed_sort_fields = {
         "id": models.Proposicao.id,
         "ano": models.Proposicao.ano,
         "dataApresentacao": models.Proposicao.dataApresentacao,
         "impact_score": models_ai.ProposicaoAIData.impact_score
+        # Você poderia adicionar 'autor' aqui se quisesse ordenar por nome
+        # "autor": first_author_subquery.c.autor_nome
     }
 
-    # Apply dynamic sorting with default fallback
-    def default_sort_key(p):
-        return (p.Proposicao.dataApresentacao is None, p.Proposicao.dataApresentacao)
-
+    # Aplica filtros e ordenação (mantido como no original)
     query_result = apply_filters_and_sorting(
         query,
         model=models.Proposicao,
@@ -164,10 +178,11 @@ def get_proposicoes(
         default_sort_field="dataApresentacao"
     )
 
-    # Final response construction
+    # --- MODIFICADO: Construção da resposta final ---
     results = query_result.offset(skip).limit(limit).all()
     proposicoes_list = []
-    for p, impact_score, summary, scope, magnitude, tags in results:
+    # Desempacota o 'autor_nome' adicional que vem da query
+    for p, impact_score, summary, scope, magnitude, tags, autor_nome in results:
         prop_data = {
             'id': p.id,
             'siglaTipo': p.siglaTipo,
@@ -177,26 +192,25 @@ def get_proposicoes(
             'dataApresentacao': p.dataApresentacao,
             'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
             'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
-            
-            # --- CAMPOS ADICIONADOS ---
             'uriAutores': p.uriAutores,
             'descricaoTipo': p.descricaoTipo,
             'ementaDetalhada': p.ementaDetalhada,
             'keywords': p.keywords,
             'urlInteiroTeor': p.urlInteiroTeor,
-            # --- FIM DOS CAMPOS ADICIONADOS ---
+            
+            # --- NOVO: Adiciona o autor ao dicionário de resposta ---
+            'autor': autor_nome or 'Autor não identificado',
 
-            # --- Campos da IA ---
-            'impact_score': impact_score or 0.0, # Garante que campos não nulos para o score da IA
+            # Campos da IA (mantidos como no original)
+            'impact_score': impact_score or 0.0,
             'summary': summary,
             'scope': scope,
             'magnitude': magnitude,
-            'tags': tags if tags else [], # Trata listas potencialmente nulas do serviço de IA
+            'tags': tags if tags else [],
         }
         proposicoes_list.append(prop_data)
 
     return proposicoes_list
-
 def get_partidos(
     db: Session,
     skip: int = 0,

@@ -56,7 +56,7 @@ export default function Page(): React.JSX.Element {
       id: prop.id.toString(),
       title: prop.ementa,
       status: prop.statusProposicao_descricaoSituacao || 'Em análise',
-      author: 'Autor desconhecido', // Temporarily hardcoded
+      author: prop.autor || 'Autor desconhecido',
       createdAt: new Date(prop.dataApresentacao),
       siglaTipo: prop.siglaTipo,
       numero: prop.numero,
