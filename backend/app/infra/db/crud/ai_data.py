@@ -17,6 +17,7 @@ def get_unscored_propositions(db: Session, limit: int = 50) -> List[models_entid
             models_entidades.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
         )
         .filter(models_ai.ProposicaoAIData.id == None)
+        .order_by(models_entidades.Proposicao.dataApresentacao.asc())
         .limit(limit)
         .all()
     )

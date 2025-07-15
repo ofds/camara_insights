@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any, Type, Tuple
 from dateutil.parser import parse
+from collections.abc import MutableMapping
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,6 +21,21 @@ from app.infra.db.models import entidades as models
 CONCURRENCY_LIMIT = 10
 BATCH_SIZE = 50
 
+# --- Função Utilitária ---
+
+def flatten_dict(d: MutableMapping, parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """
+    Achata um dicionário aninhado.
+    """
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
 # --- Funções de Sincronização Principais ---
 
 async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any] = {}) -> List[Dict[str, Any]]:
@@ -29,20 +45,22 @@ async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any]
     all_data: List[Dict[str, Any]] = []
     page = 1
     
+    # Imprime os parâmetros usados para a busca (sem a página)
+    param_str = '&'.join([f"{k}={v}" for k, v in params.items() if k != 'pagina'])
+    print(f"Buscando: {endpoint}?{param_str}...")
+
     while True:
         current_params = params.copy()
         current_params['pagina'] = page
         
-        print(f"Buscando: {endpoint} | Página: {page}")
+        print(f"  - Página: {page}")
         api_response = await camara_api_client.get(endpoint=endpoint, params=current_params)
         
         if api_response and 'dados' in api_response and api_response['dados']:
             all_data.extend(api_response['dados'])
             
             next_link = next((link for link in api_response.get('links', []) if link['rel'] == 'next'), None)
-            self_link = next((link for link in api_response.get('links', []) if link['rel'] == 'self'), None)
-
-            if not next_link or (self_link and next_link['href'] == self_link['href']):
+            if not next_link:
                 print(f"Fim da paginação para {endpoint}.")
                 break
             
@@ -53,42 +71,6 @@ async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any]
             
     return all_data
 
-def upsert_entidade(db: Session, model: Type[Base], data: Dict[str, Any]):
-    """
-    Realiza o 'upsert' (insert ou update) de uma única entidade no banco de dados.
-    """
-    pk_name = model.__mapper__.primary_key[0].name
-    pk_value = data.get(pk_name)
-    
-    if not pk_value:
-        return
-
-    model_columns = {c.name: c.type for c in model.__table__.columns}
-    filtered_data = {k: v for k, v in data.items() if k in model_columns}
-
-    for key, value in filtered_data.items():
-        if value is None:
-            continue
-        
-        column_type = model_columns.get(key)
-        
-        if isinstance(column_type, (Date, DateTime)) and isinstance(value, str):
-            try:
-                parsed_datetime = parse(value)
-                filtered_data[key] = parsed_datetime.date() if isinstance(column_type, Date) else parsed_datetime
-            except (ValueError, TypeError):
-                filtered_data[key] = None
-    
-    if model == models.Votacao and data.get('proposicao') and data['proposicao'].get('id'):
-        filtered_data['proposicao_id'] = data['proposicao']['id']
-
-    stmt = insert(model.__table__).values(**filtered_data)
-    update_dict = {k: v for k, v in filtered_data.items() if k != pk_name}
-    
-    stmt = stmt.on_conflict_do_update(index_elements=[pk_name], set_=update_dict) if update_dict else stmt.on_conflict_do_nothing(index_elements=[pk_name])
-    
-    db.execute(stmt)
-
 async def fetch_with_semaphore(semaphore: asyncio.Semaphore, endpoint: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
     """Wrapper para chamadas de API com controle de concorrência."""
     async with semaphore:
@@ -96,41 +78,79 @@ async def fetch_with_semaphore(semaphore: asyncio.Semaphore, endpoint: str, para
 
 async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}):
     """
-    Função genérica otimizada para sincronizar entidades (lista -> detalhes).
+    Função genérica e robusta para sincronizar entidades (lista -> detalhes).
     """
-    print(f"\n--- Iniciando sincronização com detalhes para {model.__tablename__}... ---")
+    param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
+    print(f"\n--- Iniciando sincronização para {model.__tablename__} com filtros: [{param_str}] ---")
     
     summary_data = await fetch_and_process_paginated_data(endpoint, params)
     
     if not summary_data:
-        print(f"Nenhum item encontrado para {model.__tablename__}.")
+        print(f"Nenhum item encontrado para {model.__tablename__} com os filtros aplicados.")
         return
 
     print(f"{len(summary_data)} itens descobertos. Buscando detalhes...")
     
+    model_columns = {c.name: c.type for c in model.__table__.columns}
+    pk_name = model.__mapper__.primary_key[0].name
+    
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     all_tasks = []
     for item in summary_data:
-        if 'uri' in item:
+        if 'uri' in item and item['uri']:
             detail_endpoint = item['uri'].replace(camara_api_client.base_url, "")
             all_tasks.append(fetch_with_semaphore(semaphore, detail_endpoint))
 
     for i in range(0, len(all_tasks), BATCH_SIZE):
         batch_tasks = all_tasks[i:i + BATCH_SIZE]
         responses = await asyncio.gather(*batch_tasks)
-        for response in responses:
-            if response and 'dados' in response:
-                upsert_entidade(db, model, response['dados'])
-        db.commit()
-        print(f"Lote {i//BATCH_SIZE + 1}/{len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
         
+        all_data_to_upsert = []
+        for response in responses:
+            if not (response and 'dados' in response):
+                continue
+
+            flattened_data = flatten_dict(response['dados'])
+            filtered_data = {k: v for k, v in flattened_data.items() if k in model_columns}
+
+            for key, value in filtered_data.items():
+                if value is None: continue
+                column_type = model_columns.get(key)
+                if isinstance(column_type, (Date, DateTime)) and isinstance(value, str):
+                    try:
+                        parsed_datetime = parse(value)
+                        filtered_data[key] = parsed_datetime.date() if isinstance(column_type, Date) else parsed_datetime
+                    except (ValueError, TypeError):
+                        filtered_data[key] = None
+            
+            if model == models.Votacao and flattened_data.get('proposicao_id'):
+                filtered_data['proposicao_id'] = flattened_data['proposicao_id']
+
+            all_data_to_upsert.append(filtered_data)
+        
+        if all_data_to_upsert:
+            stmt = insert(model).values(all_data_to_upsert)
+            update_columns = {
+                c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name
+            }
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[pk_name],
+                set_=update_columns
+            )
+            db.execute(stmt)
+            db.commit()
+            
+        print(f"Lote de detalhes {i//BATCH_SIZE + 1}/{len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
+            
     print(f"Sincronização com detalhes para {model.__tablename__} concluída.")
+
 
 async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model: Type[Base], endpoint_template: str, child_fk_name: str, params: Dict[str, Any] = {}, paginated: bool = True):
     """
     Sincroniza uma entidade 'filha' de forma otimizada.
     """
-    print(f"\n--- Sincronizando entidade filha: {child_model.__tablename__} ---")
+    param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
+    print(f"\n--- Sincronizando entidade filha: {child_model.__tablename__} com filtros: [{param_str}] ---")
     parent_ids: List[Tuple[Any]] = db.query(parent_model.id).all()
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     
@@ -155,7 +175,7 @@ async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model
                 child_data[child_fk_name] = current_parent_id
                 child_data.pop('id', None)
                 all_child_data_to_insert.append(child_data)
-        print(f"Lote de pais {i//BATCH_SIZE + 1} para {child_model.__tablename__} processado.")
+        print(f"Lote de pais {i//BATCH_SIZE + 1}/{len(parent_ids)//BATCH_SIZE+1 if parent_ids else 1} para {child_model.__tablename__} processado.")
 
     if all_child_data_to_insert:
         print(f"Iniciando inserção em massa de {len(all_child_data_to_insert)} registros para {child_model.__tablename__}...")
@@ -204,7 +224,7 @@ async def sync_proposicao_autores(db: Session):
                         })
                     except (ValueError, IndexError):
                         pass
-        print(f"Lote {i//BATCH_SIZE + 1} de autores de proposições processado.")
+        print(f"Lote {i//BATCH_SIZE + 1}/{len(proposicoes_uris)//BATCH_SIZE+1 if proposicoes_uris else 1} de autores de proposições processado.")
 
     if all_autores_to_insert:
         print(f"Inserindo {len(all_autores_to_insert)} links autor-proposição...")
@@ -221,21 +241,32 @@ async def main():
     """
     db = SessionLocal()
     try:
-        start_date = "2024-01-01"
+        # Data de início da legislatura atual para filtrar os dados
+        start_date = "2025-07-01" 
         current_year = str(datetime.now().year)
+        
+        base_params = {'itens': 100}
+        date_params = {**base_params, 'dataInicio': start_date, 'ordem': 'ASC', 'ordenarPor': 'id'}
+        proposicao_params = {**base_params, 'dataApresentacaoInicio': start_date, 'ordem': 'ASC', 'ordenarPor': 'id'}
+
 
         print("--- ETAPA 1: SINCRONIZANDO ENTIDADES PRINCIPAIS ---")
-        await sync_entidade_com_detalhes(db, models.Deputado, "/deputados", params={'itens': 100})
-        await sync_entidade_com_detalhes(db, models.Partido, "/partidos", params={'itens': 100})
-        await sync_entidade_com_detalhes(db, models.Orgao, "/orgaos", params={'itens': 100})
-        await sync_entidade_com_detalhes(db, models.Proposicao, "/proposicoes", params={'dataApresentacaoInicio': start_date, 'itens': 100, 'ordem': 'ASC', 'ordenarPor': 'id'})
-        await sync_entidade_com_detalhes(db, models.Evento, "/eventos", params={'dataInicio': start_date, 'itens': 100, 'ordem': 'ASC', 'ordenarPor': 'id'})
-        await sync_entidade_com_detalhes(db, models.Votacao, "/votacoes", params={'dataInicio': start_date, 'itens': 100, 'ordem': 'ASC', 'ordenarPor': 'id'})
+        await sync_entidade_com_detalhes(db, models.Deputado, "/deputados", params=base_params)
+        await sync_entidade_com_detalhes(db, models.Partido, "/partidos", params=base_params)
+        await sync_entidade_com_detalhes(db, models.Orgao, "/orgaos", params=base_params)
+        await sync_entidade_com_detalhes(db, models.Proposicao, "/proposicoes", params=proposicao_params)
+        await sync_entidade_com_detalhes(db, models.Evento, "/eventos", params=date_params)
+        await sync_entidade_com_detalhes(db, models.Votacao, "/votacoes", params=date_params)
         
         print("\n--- ETAPA 2: SINCRONIZANDO FRENTES, BLOCOS E GRUPOS ---")
         for model, endpoint in [(models.Frente, "/frentes"), (models.Bloco, "/blocos"), (models.Grupo, "/grupos")]:
-            data = await fetch_and_process_paginated_data(endpoint, {'itens': 100})
-            for item in data: upsert_entidade(db, model, item)
+            data = await fetch_and_process_paginated_data(endpoint, base_params)
+            if data:
+                pk_name = model.__mapper__.primary_key[0].name
+                stmt = insert(model).values(data)
+                update_cols = {c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name}
+                stmt = stmt.on_conflict_do_update(index_elements=[pk_name], set_=update_cols)
+                db.execute(stmt)
         db.commit()
         print("Frentes, Blocos e Grupos sincronizados.")
 
@@ -249,14 +280,18 @@ async def main():
         print("Limpeza concluída.")
 
         print("\n--- ETAPA 4: SINCRONIZANDO RELACIONAMENTOS E ENTIDADES FILHAS ---")
-        await sync_proposicao_autores(db) # <-- LÓGICA DE AUTORES INCORPORADA AQUI
-        await sync_child_entidade(db, models.Deputado, models.Despesa, "/deputados/{id}/despesas", "deputado_id", params={'ano': current_year, 'itens': 100})
-        await sync_child_entidade(db, models.Deputado, models.Discurso, "/deputados/{id}/discursos", "deputado_id", params={'dataInicio': start_date, 'itens': 100})
+        despesa_params = {**base_params, 'ano': current_year}
+        discurso_params = {**base_params, 'dataInicio': start_date}
+        
+        await sync_proposicao_autores(db)
+        await sync_child_entidade(db, models.Deputado, models.Despesa, "/deputados/{id}/despesas", "deputado_id", params=despesa_params)
+        await sync_child_entidade(db, models.Deputado, models.Discurso, "/deputados/{id}/discursos", "deputado_id", params=discurso_params)
         await sync_child_entidade(db, models.Proposicao, models.Tramitacao, "/proposicoes/{id}/tramitacoes", "proposicao_id", paginated=False)
         await sync_child_entidade(db, models.Votacao, models.Voto, "/votacoes/{id}/votos", "votacao_id", paginated=False)
 
     finally:
-        await camara_api_client.close()
+        # A linha abaixo foi removida para corrigir o erro 'AttributeError'
+        # await camara_api_client.close()
         db.close()
 
 if __name__ == "__main__":

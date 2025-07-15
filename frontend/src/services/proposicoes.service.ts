@@ -16,7 +16,7 @@ export interface ProposalDetails {
 
 export interface PaginatedProposals {
   proposicoes: ApiProposition[];
-  total_count: number;
+  total: number;
 }
 
 // --- NEW FUNCTION ---

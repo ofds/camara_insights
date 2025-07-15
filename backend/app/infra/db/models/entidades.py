@@ -28,7 +28,10 @@ class Deputado(Base):
     escolaridade = Column(String, nullable=True)
     urlWebsite = Column(String, nullable=True)
     redeSocial = Column(JSON, nullable=True)
-    # Campos do 'ultimoStatus'
+    
+    # Campos aninhados de 'ultimoStatus'
+    ultimoStatus_id = Column(Integer)
+    ultimoStatus_uri = Column(String)
     ultimoStatus_nome = Column(String)
     ultimoStatus_siglaPartido = Column(String)
     ultimoStatus_uriPartido = Column(String, nullable=True)
@@ -38,11 +41,15 @@ class Deputado(Base):
     ultimoStatus_email = Column(String, nullable=True)
     ultimoStatus_data = Column(Date, nullable=True)
     ultimoStatus_nomeEleitoral = Column(String)
+    ultimoStatus_gabinete_nome = Column(String, nullable=True)
+    ultimoStatus_gabinete_predio = Column(String, nullable=True)
+    ultimoStatus_gabinete_sala = Column(String, nullable=True)
+    ultimoStatus_gabinete_andar = Column(String, nullable=True)
+    ultimoStatus_gabinete_telefone = Column(String, nullable=True)
+    ultimoStatus_gabinete_email = Column(String, nullable=True)
     ultimoStatus_situacao = Column(String, nullable=True)
     ultimoStatus_condicaoEleitoral = Column(String, nullable=True)
-
-    partido_id = Column(Integer, ForeignKey('partidos.id'))
-    partido = relationship("Partido")
+    ultimoStatus_descricaoStatus = Column(Text, nullable=True)
 
 class Proposicao(Base):
     __tablename__ = "proposicoes"
@@ -93,14 +100,27 @@ class Partido(Base):
     sigla = Column(String, index=True)
     nome = Column(String)
     uri = Column(String, unique=True)
-    # Campos do 'status'
+    
+    # --- Expanded 'status' object fields (flattened) ---
     status_situacao = Column(String, nullable=True)
     status_totalPosse = Column(Integer, nullable=True)
     status_totalMembros = Column(Integer, nullable=True)
     status_uriMembros = Column(String, nullable=True)
+    
+    # --- Nested 'lider' object fields (flattened) ---
+    status_lider_uri = Column(String, nullable=True)
     status_lider_nome = Column(String, nullable=True)
+    status_lider_siglaPartido = Column(String, nullable=True)
+    status_lider_uriPartido = Column(String, nullable=True)
+    status_lider_uf = Column(String, nullable=True)
+    status_lider_idLegislatura = Column(Integer, nullable=True)
+    status_lider_urlFoto = Column(String, nullable=True)
+
+    # --- Other fields ---
     numeroEleitoral = Column(Integer, nullable=True)
     urlLogo = Column(String, nullable=True)
+    urlWebSite = Column(String, nullable=True)
+    urlFacebook = Column(String, nullable=True)
 
 class Orgao(Base):
     __tablename__ = "orgaos"
@@ -205,6 +225,7 @@ class Frente(Base):
 class Bloco(Base):
     __tablename__ = "blocos"
     id = Column(String, primary_key=True)
+    uri = Column(String, nullable=True)
     nome = Column(String)
     idLegislatura = Column(Integer)
 

@@ -6,8 +6,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8
 
 /**
  * Fetches ranked deputies from the API.
- * The backend query returns a list of tuples [Deputado, total_impacto], 
- * so we process it to match the expected schema.
+ * The backend query returns a list of deputy objects,
+ * so we process it to match the expected schema for the frontend.
  * @returns A promise that resolves to an array of ApiRankedDeputy.
  */
 export async function getRankedDeputies(): Promise<ApiRankedDeputy[]> {
@@ -19,15 +19,17 @@ export async function getRankedDeputies(): Promise<ApiRankedDeputy[]> {
 
   const data = await response.json();
 
-  // The backend returns a list of tuples: [deputyObject, totalImpact].
-  // We map this to a clean array of objects.
-  return data.map((item: [any, number]) => {
-    const deputy = item[0];
-    const total_impacto = item.total_impacto; // Access the named total_impacto field
-
+  // The backend returns a list of objects with a different shape than
+  // what the application's components expect. We map the API response
+  // to the ApiRankedDeputy type here.
+  return data.map((apiDeputy: any) => {
     return {
-      ...deputy,
-      total_impacto: total_impacto
+      id: apiDeputy.id,
+      nome: apiDeputy.ultimoStatus_nome,
+      sigla_partido: apiDeputy.ultimoStatus_siglaPartido,
+      sigla_uf: apiDeputy.ultimoStatus_siglaUf,
+      url_foto: apiDeputy.ultimoStatus_urlFoto,
+      total_impacto: apiDeputy.total_impacto,
     };
   });
 }

@@ -1,4 +1,3 @@
-# camara_insights/app/infra/db/crud/entidades.py
 from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import DateTime, Date, desc, asc, func, text
 from app.infra.db.models import entidades as models
@@ -6,7 +5,7 @@ from app.infra.db.models import ai_data as models_ai
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 from app.domain.entidades import ProposicaoSchema
-from .utils import apply_filters_and_sorting
+from .utils import apply_filters, apply_sorting
 import json
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 
@@ -149,13 +148,15 @@ def get_proposicoes(
         author_subquery, models.Proposicao.id == author_subquery.c.pid
     )
 
-    if filters:
-        filters_copy = filters.copy()
-        if 'ementa' in filters_copy:
-            ementa_value = filters_copy.pop('ementa', None)
-            if ementa_value:
-                query = query.filter(models.Proposicao.ementa.ilike(f"%{ementa_value}%"))
-        filters = filters_copy
+    # Apply filters first
+    query = apply_filters(
+        query,
+        model=models.Proposicao,
+        filters=filters
+    )
+    
+    # Now, get the total count *after* filtering
+    total_count = query.count()
 
     allowed_sort_fields = {
         "id": models.Proposicao.id,
@@ -163,12 +164,13 @@ def get_proposicoes(
         "dataApresentacao": models.Proposicao.dataApresentacao,
         "impact_score": models_ai.ProposicaoAIData.impact_score
     }
-
-    total_count = query.count()
-
-    query_result = apply_filters_and_sorting(
-        query, model=models.Proposicao, filters=filters, sort=sort,
-        allowed_sort_fields=allowed_sort_fields, default_sort_field="dataApresentacao"
+    
+    # Apply sorting
+    query_result = apply_sorting(
+        query,
+        sort=sort,
+        allowed_sort_fields=allowed_sort_fields,
+        default_sort_field="dataApresentacao"
     )
 
     results = query_result.offset(skip).limit(limit).all()
@@ -194,7 +196,6 @@ def get_proposicoes(
             'descricaoTipo': p.descricaoTipo,
             'ementaDetalhada': p.ementaDetalhada,
             'keywords': p.keywords,
-            'urlInteiroTeor': p.urlInteiroTeor,
             'autor': final_author_name,
             'impact_score': impact_score or -1,
             'summary': summary,
@@ -216,7 +217,6 @@ def get_partidos(
     """
     Busca uma lista paginada de partidos, com ordenação e filtragem dinâmicas.
     """
-    from .utils import apply_filters_and_sorting
 
     # Query inicial
     query = db.query(models.Partido)
@@ -327,12 +327,37 @@ def get_proposicoes_by_impact_and_date(db: Session, start_date: date, limit: int
     """
     Busca as proposições com maior impacto dentro de um período de data.
     """
-    return db.query(models.Proposicao)\
-             .join(models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
-             .filter(models.Proposicao.dataApresentacao >= start_date)\
-             .order_by(desc(models_ai.ProposicaoAIData.impact_score))\
-             .limit(limit)\
-             .all()
+    results = db.query(
+        models.Proposicao,
+        models_ai.ProposicaoAIData.impact_score
+    )\
+        .join(models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
+        .filter(models.Proposicao.dataApresentacao >= start_date)\
+        .order_by(desc(models_ai.ProposicaoAIData.impact_score))\
+        .limit(limit)\
+        .all()
+
+    proposicoes_list = []
+    for p, impact_score in results:
+        prop_data = {
+            'id': p.id,
+            'siglaTipo': p.siglaTipo,
+            'numero': p.numero,
+            'ano': p.ano,
+            'ementa': p.ementa,
+            'dataApresentacao': p.dataApresentacao.isoformat() if p.dataApresentacao else None,
+            'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
+            'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
+            'uriAutores': p.uriAutores,
+            'descricaoTipo': p.descricaoTipo,
+            'ementaDetalhada': p.ementaDetalhada,
+            'keywords': p.keywords,
+            'impact_score': impact_score or -1,
+        }
+        proposicoes_list.append(prop_data)
+
+    return proposicoes_list
+
 
 def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: date, limit: int = 10):
     """
@@ -340,7 +365,7 @@ def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: dat
     em um determinado período.
     """
     # This query will return a list of tuples: (Deputado object, total_impacto)
-    ranked_deputies_with_impact = db.query(
+    ranked_deputados_with_impact = db.query(
         models.Deputado,
         func.sum(models_ai.ProposicaoAIData.impact_score).label('total_impacto')
     ).join(
@@ -360,7 +385,7 @@ def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: dat
     # FastAPI needs a list of objects that match the schema, not tuples.
     # We format the result to match the DeputadoRankingSchema.
     result_list = []
-    for deputado, total_impacto in ranked_deputies_with_impact:
+    for deputado, total_impacto in ranked_deputados_with_impact:
         # Create a dictionary from the deputy object
         deputado_data = {c.name: getattr(deputado, c.name) for c in deputado.__table__.columns}
         # Add the calculated total_impacto
@@ -369,16 +394,6 @@ def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: dat
         
     return result_list
 
-
-def get_proposicoes_avg_impact(db: Session, start_date: date, end_date: date) -> float:
-    """
-    Calcula a média de impacto das proposições em um determinado período.
-    """
-    result = db.query(func.avg(models_ai.ProposicaoAIData.impact_score))\
-             .join(models.Proposicao, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
-             .filter(models.Proposicao.dataApresentacao.between(start_date, end_date))\
-             .scalar()
-    return result or 0.0
 
 def get_deputados_avg_impact(db: Session, start_date: date, end_date: date) -> float:
     """

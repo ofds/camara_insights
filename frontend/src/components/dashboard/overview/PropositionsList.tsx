@@ -35,6 +35,8 @@ export default function PropositionsList({ propositions }: PropositionsListProps
                   </Box>
                 </>
               }
+              // Add this line to fix the error
+              secondaryTypographyProps={{ component: 'div' }}
             />
           </ListItem>
           {index < propositions.length - 1 && <Divider component="li" />}
