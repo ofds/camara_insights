@@ -164,3 +164,24 @@ class GrupoSchema(BaseModel):
 class ProposicaoPaginatedResponse(BaseModel):
     proposicoes: List[ProposicaoSchema]
     total_count: int
+
+class DeputadoRankingSchema(DeputadoSchema):
+    total_impacto: float
+
+class ProposicaoPaginatedResponse(BaseModel):
+    proposicoes: List[ProposicaoSchema]
+    total: int
+    limit: int
+    skip: int
+
+class ProposicaoImpactoAvgSchema(BaseModel):
+    period: str
+    average_impact: float
+    start_date: date
+    end_date: date
+
+class DeputadoImpactoAvgSchema(BaseModel):
+    period: str
+    average_impact: float
+    start_date: date
+    end_date: date

@@ -1,8 +1,8 @@
-# app/api/v1/proposicoes.py
 import asyncio
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any
+from datetime import date, timedelta
 
 from app.domain import entidades as schemas
 from app.infra.db.crud import entidades as crud
@@ -11,7 +11,7 @@ from app.infra.camara_api import camara_api_client
 
 router = APIRouter()
 
-# Dependency - CORRIGIDO
+# Dependency
 def get_db():
     """
     Cria e gerencia uma sessão de banco de dados para cada requisição.
@@ -36,7 +36,8 @@ def read_proposicoes(
     filter_exclude_params = {'skip', 'limit', 'sort'}
     filters = {k: v for k, v in req.query_params.items() if k not in filter_exclude_params}
 
-    result = crud.get_proposicoes(
+    # Data returned from CRUD function
+    crud_result = crud.get_proposicoes(
         db=db,
         skip=skip,
         limit=limit,
@@ -44,7 +45,34 @@ def read_proposicoes(
         sort=sort
     )
 
-    return result
+    # *** FIX IS HERE ***
+    # Reconstruct the response to match the ProposicaoPaginatedResponse schema
+    return {
+        "proposicoes": crud_result["proposicoes"],
+        "total": crud_result["total_count"], # Rename total_count to total
+        "limit": limit,                      # Add limit from query params
+        "skip": skip                         # Add skip from query params
+    }
+
+
+@router.get("/proposicoes/ranking", response_model=List[schemas.ProposicaoSchema])
+def read_proposicoes_ranking(
+    period: str = Query("daily", enum=["daily", "monthly"]),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna uma lista das proposições de maior impacto, diário ou mensal.
+    """
+    today = date.today()
+    if period == "daily":
+        start_date = today
+    elif period == "monthly":
+        start_date = today - timedelta(days=30)
+    else:
+        raise HTTPException(status_code=400, detail="Período inválido. Use 'daily' ou 'monthly'.")
+
+    return crud.get_proposicoes_by_impact_and_date(db=db, start_date=start_date)
+
 
 @router.get("/proposicoes/{proposicao_id}", response_model=schemas.ProposicaoSchema)
 def read_proposicao(proposicao_id: int, db: Session = Depends(get_db)):

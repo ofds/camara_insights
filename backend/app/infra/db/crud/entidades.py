@@ -322,3 +322,79 @@ def get_proposicao_by_id(db: Session, proposicao_id: int) -> Optional[Proposicao
         prop_data.tags = ai_data.tags
 
     return prop_data
+
+def get_proposicoes_by_impact_and_date(db: Session, start_date: date, limit: int = 10):
+    """
+    Busca as proposições com maior impacto dentro de um período de data.
+    """
+    return db.query(models.Proposicao)\
+             .join(models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
+             .filter(models.Proposicao.dataApresentacao >= start_date)\
+             .order_by(desc(models_ai.ProposicaoAIData.impact_score))\
+             .limit(limit)\
+             .all()
+
+def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: date, limit: int = 10):
+    """
+    Calcula o ranking de deputados com base no impacto total de suas proposições
+    em um determinado período.
+    """
+    # This query will return a list of tuples: (Deputado object, total_impacto)
+    ranked_deputies_with_impact = db.query(
+        models.Deputado,
+        func.sum(models_ai.ProposicaoAIData.impact_score).label('total_impacto')
+    ).join(
+        models.proposicao_autores, models.Deputado.id == models.proposicao_autores.c.deputado_id
+    ).join(
+        models.Proposicao, models.proposicao_autores.c.proposicao_id == models.Proposicao.id
+    ).join(
+        models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
+    ).filter(
+        models.Proposicao.dataApresentacao.between(start_date, end_date)
+    ).group_by(
+        models.Deputado.id
+    ).order_by(
+        desc('total_impacto')
+    ).limit(limit).all()
+
+    # FastAPI needs a list of objects that match the schema, not tuples.
+    # We format the result to match the DeputadoRankingSchema.
+    result_list = []
+    for deputado, total_impacto in ranked_deputies_with_impact:
+        # Create a dictionary from the deputy object
+        deputado_data = {c.name: getattr(deputado, c.name) for c in deputado.__table__.columns}
+        # Add the calculated total_impacto
+        deputado_data['total_impacto'] = total_impacto or 0
+        result_list.append(deputado_data)
+        
+    return result_list
+
+
+def get_proposicoes_avg_impact(db: Session, start_date: date, end_date: date) -> float:
+    """
+    Calcula a média de impacto das proposições em um determinado período.
+    """
+    result = db.query(func.avg(models_ai.ProposicaoAIData.impact_score))\
+             .join(models.Proposicao, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
+             .filter(models.Proposicao.dataApresentacao.between(start_date, end_date))\
+             .scalar()
+    return result or 0.0
+
+def get_deputados_avg_impact(db: Session, start_date: date, end_date: date) -> float:
+    """
+    Calcula a média do impacto somado por deputado em um determinado período.
+    """
+    subquery = db.query(
+        func.sum(models_ai.ProposicaoAIData.impact_score).label('total_impacto')
+    ).join(
+        models.Proposicao, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
+    ).join(
+        models.proposicao_autores, models.Proposicao.id == models.proposicao_autores.c.proposicao_id
+    ).filter(
+        models.Proposicao.dataApresentacao.between(start_date, end_date)
+    ).group_by(
+        models.proposicao_autores.c.deputado_id
+    ).subquery()
+
+    result = db.query(func.avg(subquery.c.total_impacto)).scalar()
+    return result or 0.0
