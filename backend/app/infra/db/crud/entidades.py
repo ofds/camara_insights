@@ -196,7 +196,7 @@ def get_proposicoes(
             'keywords': p.keywords,
             'urlInteiroTeor': p.urlInteiroTeor,
             'autor': final_author_name,
-            'impact_score': impact_score or 0.0,
+            'impact_score': impact_score or -1,
             'summary': summary,
             'scope': scope,
             'magnitude': magnitude,
