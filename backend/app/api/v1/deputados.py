@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, Query, Request
+# backend/app/api/v1/deputados.py
+
+from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from datetime import date, timedelta
-
 
 from app.domain import entidades as schemas
 from app.infra.db.crud import entidades as crud
@@ -40,7 +41,6 @@ def read_deputados_impacto_avg(
         "end_date": end_date
     }
 
-
 @router.get("/deputados/ranking", response_model=List[schemas.DeputadoRankingSchema])
 def get_deputados_ranking(db: Session = Depends(get_db)):
     """
@@ -51,6 +51,16 @@ def get_deputados_ranking(db: Session = Depends(get_db)):
     
     ranked_deputados = crud.get_deputados_ranking_by_impact(db, start_date=start_date, end_date=end_date)
     return ranked_deputados
+
+@router.get("/deputados/{deputado_id}", response_model=schemas.DeputadoSchemaDetalhado)
+def read_deputado_by_id(deputado_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna informações detalhadas de um deputado específico pelo seu ID.
+    """
+    db_deputado = crud.get_deputado_by_id(db, deputado_id=deputado_id)
+    if db_deputado is None:
+        raise HTTPException(status_code=404, detail="Deputado não encontrado")
+    return db_deputado
 
 @router.get("/deputados", response_model=List[schemas.DeputadoSchema])
 def read_deputados(

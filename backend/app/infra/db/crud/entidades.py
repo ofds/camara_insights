@@ -85,12 +85,10 @@ def get_deputados(
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None
-):
+) -> List[models.Deputado]:
     """
     Busca uma lista paginada de deputados, com filtros e ordenação dinâmicos.
     """
-    
-
     # Query inicial
     query = db.query(models.Deputado)
 
@@ -99,6 +97,8 @@ def get_deputados(
         "nome": models.Deputado.ultimoStatus_nome,
         "siglaUf": models.Deputado.ultimoStatus_siglaUf,
         "siglaPartido": models.Deputado.ultimoStatus_siglaPartido,
+        "sexo": models.Deputado.sexo,
+        "situacao": models.Deputado.ultimoStatus_situacao,
     }
 
     # Aplica filtros e ordenação dinâmicos
@@ -114,6 +114,28 @@ def get_deputados(
     # Aplica paginação e retorna resultados
     return query_result.offset(skip).limit(limit).all()
 
+def get_deputado_by_id(db: Session, deputado_id: int) -> Optional[models.Deputado]:
+    """
+    Busca um único deputado pelo ID, incluindo informações detalhadas e proposições associadas.
+    """
+    deputado = db.query(models.Deputado).filter(models.Deputado.id == deputado_id).first()
+    
+    if not deputado:
+        return None
+
+    # Buscar as proposições associadas a este deputado
+    proposicoes = (
+        db.query(models.Proposicao)
+        .join(models.proposicao_autores, models.Proposicao.id == models.proposicao_autores.c.proposicao_id)
+        .filter(models.proposicao_autores.c.deputado_id == deputado_id)
+        .all()
+    )
+    
+    # Adicionar a lista de proposições ao objeto do deputado
+    # Este campo será preenchido pelo Pydantic ao usar o schema `DeputadoSchemaDetalhado`
+    deputado.proposicoes = proposicoes
+    
+    return deputado
 
 def get_proposicoes(
     db: Session,

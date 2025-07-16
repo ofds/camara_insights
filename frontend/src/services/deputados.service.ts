@@ -1,6 +1,6 @@
 // src/services/deputados.service.ts
 
-import { type ApiRankedDeputy } from '@/types/deputado';
+import { type ApiRankedDeputy, type Deputado, type DeputadoDetalhado } from '@/types/deputado';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -32,4 +32,69 @@ export async function getRankedDeputies(): Promise<ApiRankedDeputy[]> {
       total_impacto: apiDeputy.total_impacto,
     };
   });
+}
+
+/**
+ * Fetches a paginated, filterable, and sortable list of deputies.
+ * @param params - The query parameters for the request.
+ * @returns A promise that resolves to an object containing the list of deputies and the total count.
+ */
+export async function getDeputados(params: {
+  skip: number;
+  limit: number;
+  sort?: string;
+  filters?: Record<string, string | undefined>;
+}): Promise<{ data: Deputado[]; total: number }> {
+  const urlParams = new URLSearchParams({
+    skip: String(params.skip),
+    limit: String(params.limit),
+  });
+
+  if (params.sort) {
+    urlParams.append('sort', params.sort);
+  }
+
+  if (params.filters) {
+    for (const key in params.filters) {
+      if (Object.prototype.hasOwnProperty.call(params.filters, key)) {
+        const value = params.filters[key];
+        // Ensure we only append parameters that have a defined, non-empty value
+        if (value) {
+          urlParams.append(key, value);
+        }
+      }
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}/deputados?${urlParams.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Não foi possível buscar os deputados.');
+  }
+
+  // NOTE: This assumes the backend API returns the total number of items
+  // in a custom 'X-Total-Count' header for pagination to work correctly.
+  // A change may be required in your backend to add this header.
+  const total = parseInt(response.headers.get('X-Total-Count') || '0', 10);
+  const data: Deputado[] = await response.json();
+
+  return { data, total };
+}
+
+/**
+ * Fetches the detailed information for a single deputy by their ID.
+ * @param id - The ID of the deputy to fetch.
+ * @returns A promise that resolves to the detailed deputy object.
+ */
+export async function getDeputadoById(id: number): Promise<DeputadoDetalhado> {
+  const response = await fetch(`${API_BASE_URL}/deputados/${id}`);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Deputado não encontrado.');
+    }
+    throw new Error('Não foi possível buscar os detalhes do deputado.');
+  }
+
+  return response.json();
 }

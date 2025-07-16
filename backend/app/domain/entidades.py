@@ -1,22 +1,62 @@
-# camara_insights/app/domain/entidades.py
-from pydantic import BaseModel
+# backend/app/domain/entidades.py
+
+from pydantic import BaseModel, validator
+from typing import Optional, List, Dict, Any
 from datetime import date, datetime
-from typing import List, Optional
 
-# --- Schemas Existentes ---
-
+# Schema simplificado para a lista de deputados
 class DeputadoSchema(BaseModel):
     id: int
     nomeCivil: Optional[str] = None
+    sexo: Optional[str] = None  # Added
     ultimoStatus_nome: Optional[str] = None
     ultimoStatus_siglaPartido: Optional[str] = None
     ultimoStatus_siglaUf: Optional[str] = None
     ultimoStatus_urlFoto: Optional[str] = None
     ultimoStatus_email: Optional[str] = None
-    
+    ultimoStatus_situacao: Optional[str] = None # Added
+
     class Config:
         from_attributes = True
 
+# Schema detalhado para a página de um deputado específico
+class DeputadoSchemaDetalhado(DeputadoSchema):
+    uri: Optional[str] = None
+    cpf: Optional[str] = None
+    dataNascimento: Optional[date] = None
+    dataFalecimento: Optional[date] = None
+    ufNascimento: Optional[str] = None
+    municipioNascimento: Optional[str] = None
+    escolaridade: Optional[str] = None
+    urlWebsite: Optional[str] = None
+    redeSocial: Optional[Dict[str, Any]] = None
+    
+    # Campos aninhados de 'ultimoStatus'
+    ultimoStatus_id: Optional[int] = None
+    ultimoStatus_uri: Optional[str] = None
+    ultimoStatus_uriPartido: Optional[str] = None
+    ultimoStatus_idLegislatura: Optional[int] = None
+    ultimoStatus_data: Optional[date] = None
+    ultimoStatus_nomeEleitoral: Optional[str] = None
+    ultimoStatus_gabinete_nome: Optional[str] = None
+    ultimoStatus_gabinete_predio: Optional[str] = None
+    ultimoStatus_gabinete_sala: Optional[str] = None
+    ultimoStatus_gabinete_andar: Optional[str] = None
+    ultimoStatus_gabinete_telefone: Optional[str] = None
+    ultimoStatus_gabinete_email: Optional[str] = None
+    # ultimoStatus_situacao is already in the base schema
+    ultimoStatus_condicaoEleitoral: Optional[str] = None
+    ultimoStatus_descricaoStatus: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+    @validator('redeSocial', pre=True)
+    def empty_list_to_none(cls, v):
+        # If the input for redeSocial is a list and it's empty, convert it to None
+        if isinstance(v, list) and not v:
+            return None
+        return v
 class ProposicaoSchema(BaseModel):
     id: int
     siglaTipo: Optional[str] = None
