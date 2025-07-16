@@ -1,6 +1,6 @@
 # backend/app/domain/entidades.py
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
@@ -29,7 +29,7 @@ class DeputadoSchemaDetalhado(DeputadoSchema):
     municipioNascimento: Optional[str] = None
     escolaridade: Optional[str] = None
     urlWebsite: Optional[str] = None
-    redeSocial: Optional[Dict[str, Any]] = None
+    redeSocial: Optional[List[str]] = None
     
     # Campos aninhados de 'ultimoStatus'
     ultimoStatus_id: Optional[int] = None
@@ -51,9 +51,9 @@ class DeputadoSchemaDetalhado(DeputadoSchema):
     class Config:
         from_attributes = True
 
-    @validator('redeSocial', pre=True)
+    @field_validator('redeSocial', mode='before')
+    @classmethod
     def empty_list_to_none(cls, v):
-        # If the input for redeSocial is a list and it's empty, convert it to None
         if isinstance(v, list) and not v:
             return None
         return v
