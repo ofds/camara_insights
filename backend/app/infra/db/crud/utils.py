@@ -1,8 +1,13 @@
-from typing import Optional, Dict, Any
-from sqlalchemy.orm import Query
-from sqlalchemy import asc, desc
+# backend/app/infra/db/crud/utils.py
 
-def apply_filters(query: Query, model, filters: Optional[Dict[str, Any]] = None) -> Query:
+from sqlalchemy import func, asc, desc
+from sqlalchemy.orm import Query
+from typing import Optional, Dict, Any, Type
+from ..models import entidades as models
+from unidecode import unidecode
+
+
+def apply_filters(query: Query, model: Type, filters: Optional[Dict[str, Any]] = None) -> Query:
     """
     Applies advanced filtering to a SQLAlchemy query.
 
@@ -17,12 +22,15 @@ def apply_filters(query: Query, model, filters: Optional[Dict[str, Any]] = None)
     - 'lte': less than or equal
     - 'in': in a list of values
     - 'like': case-sensitive like
-    - 'ilike': case-insensitive like
+    - 'ilike': case-insensitive and accent-insensitive like
     """
     if not filters:
         return query
 
     for key, value in filters.items():
+        if value is None or value == '':
+            continue
+
         parts = key.split('__')
         field_name = parts[0]
         operator = parts[1] if len(parts) > 1 else 'eq'
@@ -46,17 +54,22 @@ def apply_filters(query: Query, model, filters: Optional[Dict[str, Any]] = None)
             elif operator == 'like':
                 query = query.filter(column.like(f"%{value}%"))
             elif operator == 'ilike':
-                query = query.filter(column.ilike(f"%{value}%"))
+                # Use the custom 'unaccent' function for accent-insensitive search
+                query = query.filter(func.unaccent(column).ilike(f'%{unidecode(str(value))}%'))
     return query
 
 def apply_sorting(
     query: Query,
+    model: Type,
     sort: Optional[str] = None,
-    allowed_sort_fields: Dict[str, Any] = None,
-    default_sort_field: str = None
+    allowed_sort_fields: Optional[Dict[str, Any]] = None,
+    default_sort_field: Optional[str] = None
 ) -> Query:
     """Applies sorting to a SQLAlchemy query."""
-    if sort:
+    if not sort and default_sort_field and allowed_sort_fields:
+        sort = f"{default_sort_field}:asc"
+
+    if sort and allowed_sort_fields:
         sort_params = sort.split(',')
         for sort_param in sort_params:
             try:
@@ -64,7 +77,7 @@ def apply_sorting(
                 field = field.strip()
                 direction = direction.strip().lower()
 
-                if allowed_sort_fields and field in allowed_sort_fields and direction in ['asc', 'desc']:
+                if field in allowed_sort_fields and direction in ['asc', 'desc']:
                     column = allowed_sort_fields[field]
                     if direction == 'asc':
                         query = query.order_by(asc(column))
@@ -73,24 +86,21 @@ def apply_sorting(
             except ValueError:
                 # Silently ignore malformed sort parameters
                 pass
-    elif default_sort_field and allowed_sort_fields and default_sort_field in allowed_sort_fields:
-        default_column = allowed_sort_fields[default_sort_field]
-        query = query.order_by(desc(default_column))
-
     return query
+
 
 def apply_filters_and_sorting(
     query: Query,
-    model,
+    model: Type,
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None,
-    allowed_sort_fields: Dict[str, Any] = None,
-    default_sort_field: str = None
+    allowed_sort_fields: Optional[Dict[str, Any]] = None,
+    default_sort_field: Optional[str] = None
 ) -> Query:
     """
     Applies advanced filtering and sorting to a SQLAlchemy query by
     combining the apply_filters and apply_sorting functions.
     """
     query = apply_filters(query, model, filters)
-    query = apply_sorting(query, sort, allowed_sort_fields, default_sort_field)
+    query = apply_sorting(query, model, sort, allowed_sort_fields, default_sort_field)
     return query

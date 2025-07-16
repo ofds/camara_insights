@@ -158,15 +158,18 @@ export default function ProposalDetailsPage(): React.JSX.Element {
 
             {/* Card de Autores */}
             <Card>
-              <CardHeader title="Autores" />
-              <List dense>
-                {autores.length > 0 ? autores.map(autor => (
-                  <ListItem key={autor.uri}>
-                    <ListItemText primary={autor.nome} secondary={autor.tipo} />
-                  </ListItem>
-                )) : <ListItem><ListItemText primary="Nenhum autor encontrado." /></ListItem>}
-              </List>
-            </Card>
+    <CardHeader title="Autores" />
+    <List dense>
+    {autores.length > 0 ? autores.map(autor => {
+        const deputyId = autor.uri.split('/').pop();
+        return (
+        <ListItem key={autor.uri} button component="a" href={paths.dashboard.deputado(deputyId)}>
+            <ListItemText primary={autor.nome} secondary={autor.tipo} />
+        </ListItem>
+        );
+    }) : <ListItem><ListItemText primary="Nenhum autor encontrado." /></ListItem>}
+    </List>
+</Card>
 
             {/* Card de Temas */}
             <Card>

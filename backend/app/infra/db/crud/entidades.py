@@ -85,7 +85,7 @@ def get_deputados(
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None
-) -> Tuple[List[models.Deputado], int]: # Modified return type
+) -> Tuple[List[models.Deputado], int]:
     """
     Busca uma lista paginada de deputados, com filtros e ordenação dinâmicos.
     Retorna os deputados e a contagem total.
@@ -99,6 +99,10 @@ def get_deputados(
         "sexo": models.Deputado.sexo,
         "situacao": models.Deputado.ultimoStatus_situacao,
     }
+
+    # NEW: Modify the filter key for the name to use ilike
+    if filters and 'ultimoStatus_nome' in filters:
+        filters['ultimoStatus_nome__ilike'] = filters.pop('ultimoStatus_nome')
 
     # Aplica filtros e ordenação dinâmicos
     query_result = apply_filters_and_sorting(

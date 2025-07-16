@@ -20,7 +20,8 @@ export function DeputadosFilters({ onFilterChange }: DeputadosFiltersProps): Rea
 
   React.useEffect(() => {
     onFilterChange({
-      ultimoStatus_nome: debouncedNome || undefined,
+      // MODIFIED: Ensure the filter key matches what the backend expects
+      ultimoStatus_nome__ilike: debouncedNome || undefined,
       ultimoStatus_siglaPartido: debouncedPartido || undefined,
       ultimoStatus_siglaUf: debouncedUf || undefined,
     });
