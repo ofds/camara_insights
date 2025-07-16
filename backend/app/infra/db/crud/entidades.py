@@ -3,7 +3,7 @@ from sqlalchemy import DateTime, Date, desc, asc, func, text
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from app.domain.entidades import ProposicaoSchema
 from .utils import apply_filters, apply_sorting
 import json
@@ -85,14 +85,13 @@ def get_deputados(
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None
-) -> List[models.Deputado]:
+) -> Tuple[List[models.Deputado], int]: # Modified return type
     """
     Busca uma lista paginada de deputados, com filtros e ordenação dinâmicos.
+    Retorna os deputados e a contagem total.
     """
-    # Query inicial
     query = db.query(models.Deputado)
 
-    # Define campos permitidos para ordenação e filtragem
     allowed_sort_fields = {
         "nome": models.Deputado.ultimoStatus_nome,
         "siglaUf": models.Deputado.ultimoStatus_siglaUf,
@@ -111,8 +110,13 @@ def get_deputados(
         default_sort_field="nome"
     )
 
-    # Aplica paginação e retorna resultados
-    return query_result.offset(skip).limit(limit).all()
+    # Obter a contagem total *após* a filtragem
+    total_count = query_result.count()
+
+    # Aplicar paginação e retornar os resultados e a contagem total
+    deputados = query_result.offset(skip).limit(limit).all()
+    
+    return deputados, total_count
 
 def get_deputado_by_id(db: Session, deputado_id: int) -> Optional[models.Deputado]:
     """

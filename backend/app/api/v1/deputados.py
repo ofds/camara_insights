@@ -1,6 +1,6 @@
 # backend/app/api/v1/deputados.py
 
-from fastapi import APIRouter, Depends, Query, Request, HTTPException
+from fastapi import APIRouter, Depends, Query, Request, HTTPException, Response
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from datetime import date, timedelta
@@ -65,6 +65,7 @@ def read_deputado_by_id(deputado_id: int, db: Session = Depends(get_db)):
 @router.get("/deputados", response_model=List[schemas.DeputadoSchema])
 def read_deputados(
     req: Request,
+    res: Response,  # Add the response object as a dependency
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(100, ge=1, le=200, description="Número de registros a retornar"),
@@ -78,11 +79,20 @@ def read_deputados(
         for key, value in req.query_params.items()
         if key not in ["skip", "limit", "sort"]
     }
-    deputados = crud.get_deputados(
+    
+    # Obter deputados e contagem total da função CRUD atualizada
+    deputados, total_count = crud.get_deputados(
         db,
         skip=skip,
         limit=limit,
         filters=filters,
         sort=sort
     )
+    
+    # Definir o cabeçalho X-Total-Count
+    res.headers["X-Total-Count"] = str(total_count)
+
+    # Expor o cabeçalho para que o navegador do cliente possa acessá-lo (importante para CORS)
+    res.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
+    
     return deputados

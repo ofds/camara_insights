@@ -5,14 +5,16 @@ import {
   Avatar,
   Box,
   Card,
+  Link,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TablePagination,
   TableRow,
-  Link,
   TableSortLabel,
+  Skeleton, // Import Skeleton
+  Divider, // Import Divider
 } from '@mui/material';
 
 import type { Deputado } from '@/types/deputado';
@@ -27,6 +29,7 @@ interface DeputadosTableProps {
   page?: number;
   rowsPerPage?: number;
   sort: string;
+  loading?: boolean; // Add loading prop
 }
 
 export function DeputadosTable({
@@ -38,6 +41,7 @@ export function DeputadosTable({
   page = 0,
   rowsPerPage = 0,
   sort,
+  loading = false, // Destructure loading prop
 }: DeputadosTableProps): React.JSX.Element {
   const [sortField, sortDirection] = sort.split(':');
 
@@ -46,6 +50,13 @@ export function DeputadosTable({
     onSortChange(`${field}:${isAsc ? 'desc' : 'asc'}`);
   };
 
+  const sortableFields = [
+    { id: 'nome', label: 'Nome' },
+    { id: 'siglaPartido', label: 'Partido' },
+    { id: 'siglaUf', label: 'UF' },
+    { id: 'situacao', label: 'Situação' },
+  ];
+
   return (
     <Card>
       <Box sx={{ overflowX: 'auto' }}>
@@ -53,49 +64,48 @@ export function DeputadosTable({
           <TableHead>
             <TableRow>
               <TableCell>Foto</TableCell>
-              <TableCell sortDirection={sortField === 'nome' ? (sortDirection as 'asc' | 'desc') : false}>
-                <TableSortLabel active={sortField === 'nome'} direction={sortDirection as 'asc' | 'desc'} onClick={() => handleSort('nome')}>
-                  Nome
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'siglaPartido' ? (sortDirection as 'asc' | 'desc') : false}>
-                <TableSortLabel active={sortField === 'siglaPartido'} direction={sortDirection as 'asc' | 'desc'} onClick={() => handleSort('siglaPartido')}>
-                  Partido
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sortDirection={sortField === 'siglaUf' ? (sortDirection as 'asc' | 'desc') : false}>
-                <TableSortLabel active={sortField === 'siglaUf'} direction={sortDirection as 'asc' | 'desc'} onClick={() => handleSort('siglaUf')}>
-                  UF
-                </TableSortLabel>
-              </TableCell>
+              {sortableFields.map((field) => (
+                <TableCell key={field.id} sortDirection={sortField === field.id ? (sortDirection as 'asc' | 'desc') : false}>
+                  <TableSortLabel active={sortField === field.id} direction={sortDirection as 'asc' | 'desc'} onClick={() => handleSort(field.id)}>
+                    {field.label}
+                  </TableSortLabel>
+                </TableCell>
+              ))}
               <TableCell>Email</TableCell>
-              <TableCell sortDirection={sortField === 'situacao' ? (sortDirection as 'asc' | 'desc') : false}>
-                 <TableSortLabel active={sortField === 'situacao'} direction={sortDirection as 'asc' | 'desc'} onClick={() => handleSort('situacao')}>
-                  Situação
-                </TableSortLabel>
-              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.map((deputado) => (
-              <TableRow hover key={deputado.id}>
-                <TableCell>
-                  <Avatar src={deputado.ultimoStatus_urlFoto} />
-                </TableCell>
-                <TableCell>
-                   <Link href={`${paths.dashboard.deputados}/${deputado.id}`} underline="hover">
-                    {deputado.ultimoStatus_nome}
-                   </Link>
-                </TableCell>
-                <TableCell>{deputado.ultimoStatus_siglaPartido}</TableCell>
-                <TableCell>{deputado.ultimoStatus_siglaUf}</TableCell>
-                <TableCell>{deputado.ultimoStatus_email}</TableCell>
-                <TableCell>{deputado.ultimoStatus_situacao}</TableCell>
-              </TableRow>
-            ))}
+            {loading ? (
+              // Show skeleton rows while loading
+              Array.from({ length: rowsPerPage }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell colSpan={6}>
+                    <Skeleton variant="text" sx={{ width: '100%' }} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              // Show data rows when not loading
+              items.map((deputado) => (
+                <TableRow hover key={deputado.id}>
+                  <TableCell><Avatar src={deputado.ultimoStatus_urlFoto} /></TableCell>
+                  <TableCell>
+                    {/* Correctly use the dynamic path function */}
+                    <Link href={paths.dashboard.deputado(deputado.id)} underline="hover">
+                      {deputado.ultimoStatus_nome}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{deputado.ultimoStatus_siglaPartido}</TableCell>
+                  <TableCell>{deputado.ultimoStatus_siglaUf}</TableCell>
+                  <TableCell>{deputado.ultimoStatus_situacao}</TableCell>
+                  <TableCell>{deputado.ultimoStatus_email}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Box>
+      <Divider />
       <TablePagination
         component="div"
         count={count}
@@ -103,7 +113,8 @@ export function DeputadosTable({
         onRowsPerPageChange={onRowsPerPageChange}
         page={page}
         rowsPerPage={rowsPerPage}
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        labelRowsPerPage="Linhas por página:"
       />
     </Card>
   );
