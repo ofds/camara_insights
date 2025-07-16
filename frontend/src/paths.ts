@@ -7,8 +7,9 @@ export const paths = {
     overview: '/dashboard',
     account: '/dashboard/account',
     proposals: '/dashboard/proposals',
+    proposal: (id: number | string) => `/dashboard/proposals/${id}`,
     deputados: '/dashboard/deputados',
-    deputado: (id: number | string) => `/dashboard/deputados/${id}`, // Add this line for dynamic paths
+    deputado: (id: number | string) => `/dashboard/deputados/${id}`,
     transparency: '/dashboard/transparency',
     integrations: '/dashboard/integrations',
     settings: '/dashboard/settings',

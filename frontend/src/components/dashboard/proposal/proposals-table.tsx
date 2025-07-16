@@ -45,7 +45,7 @@ function ProposalRow(props: { row: Proposal; rawRow: ApiProposal }) {
   const router = useRouter();
 
   const handleRowClick = () => {
-    router.push(`${paths.dashboard.proposals}/${row.id}`);
+    router.push(paths.dashboard.proposal(row.id));
   };
 
   return (

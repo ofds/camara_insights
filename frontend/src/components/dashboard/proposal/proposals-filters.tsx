@@ -34,7 +34,7 @@ export function ProposalsFilters({
             <MagnifyingGlassIcon fontSize="var(--icon-fontSize-md)" />
           </InputAdornment>
         }
-        sx={{ flexGrow: 1, minWidth: '300px' }}
+        sx={{ flexGrow: 1, minWidth: '200px' }}
         onChange={(e) => handleChange('ementa__ilike', e.target.value)}
       />
       <FormControl sx={{ minWidth: 100 }} size="small">
@@ -54,12 +54,42 @@ export function ProposalsFilters({
           <MenuItem value="REQ">REQ</MenuItem>
         </Select>
       </FormControl>
+      <FormControl sx={{ minWidth: 120 }} size="small">
+        <InputLabel>Escopo</InputLabel>
+        <Select
+            onChange={(e) => handleChange('scope', e.target.value as string)}
+            label="Escopo"
+            value={filters.scope || ''}
+        >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="Nacional">Nacional</MenuItem>
+            <MenuItem value="Estadual">Estadual</MenuItem>
+            <MenuItem value="Municipal">Municipal</MenuItem>
+        </Select>
+      </FormControl>
+      <FormControl sx={{ minWidth: 120 }} size="small">
+          <InputLabel>Magnitude</InputLabel>
+          <Select
+              onChange={(e) => handleChange('magnitude', e.target.value as string)}
+              label="Magnitude"
+              value={filters.magnitude || ''}
+          >
+              <MenuItem value="">Todas</MenuItem>
+              <MenuItem value="Baixo">Baixo</MenuItem>
+              <MenuItem value="Médio">Médio</MenuItem>
+              <MenuItem value="Alto">Alto</MenuItem>
+              <MenuItem value="Setorial Específico">Setorial Específico</MenuItem>
+              <MenuItem value="População Geral">População Geral</MenuItem>
+          </Select>
+      </FormControl>
       <TextField
-        label="Tags"
-        variant="outlined"
+        label="Data Apresentação"
+        type="date"
         size="small"
-        sx={{ minWidth: 120 }}
-        onChange={(e) => handleChange('tags', e.target.value)}
+        InputLabelProps={{
+          shrink: true,
+        }}
+        onChange={(e) => handleChange('dataApresentacao', e.target.value)}
       />
       <TextField
         label="Autor"

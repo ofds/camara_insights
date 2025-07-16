@@ -175,23 +175,32 @@ def get_proposicoes(
         author_subquery, models.Proposicao.id == author_subquery.c.pid
     )
 
-    if filters and 'autor' in filters:
-        autor_filter_value = f"%{filters['autor']}%"
-        query = query.filter(author_subquery.c.autores_db.ilike(autor_filter_value))
-        del filters['autor']
-    
+    if filters:
+        # Handle author filter separately
+        if 'autor' in filters:
+            autor_filter_value = f"%{filters['autor']}%"
+            query = query.filter(author_subquery.c.autores_db.ilike(autor_filter_value))
+            del filters['autor']
+
+        # Handle ProposicaoAIData filters separately
+        if 'scope' in filters:
+            query = query.filter(models_ai.ProposicaoAIData.scope == filters['scope'])
+            del filters['scope']
+
+        if 'magnitude' in filters:
+            query = query.filter(models_ai.ProposicaoAIData.magnitude == filters['magnitude'])
+            del filters['magnitude']
+
     if scored:
         query = query.filter(models_ai.ProposicaoAIData.id != None)
 
-
-    # Apply filters first
+    # Apply remaining filters for the Proposicao model
     query = apply_filters(
         query,
         model=models.Proposicao,
         filters=filters
     )
-    
-    # Now, get the total count *after* filtering
+
     total_count = query.count()
 
     allowed_sort_fields = {
@@ -200,8 +209,7 @@ def get_proposicoes(
         "dataApresentacao": models.Proposicao.dataApresentacao,
         "impact_score": models_ai.ProposicaoAIData.impact_score
     }
-    
-    # Apply sorting
+
     query_result = apply_sorting(
         query,
         sort=sort,
@@ -241,7 +249,6 @@ def get_proposicoes(
         }
         proposicoes_list.append(prop_data)
     return {"proposicoes": proposicoes_list, "total_count": total_count}
-
 
 def get_partidos(
     db: Session,

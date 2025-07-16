@@ -56,7 +56,7 @@ function ProposicoesList({ proposicoes }: { proposicoes: Proposicao[] }) {
             <ListItem>
               <ListItemText
                 primary={
-                  <Link href={paths.dashboard.proposals_id(prop.id)} underline="hover">
+                  <Link href={paths.dashboard.proposal(prop.id)} underline="hover">
                     {`${prop.siglaTipo} ${prop.numero}/${prop.ano}`}
                   </Link>
                 }
