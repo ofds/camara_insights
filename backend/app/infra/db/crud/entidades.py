@@ -8,7 +8,7 @@ from app.domain.entidades import ProposicaoSchema
 from .utils import apply_filters, apply_sorting
 import json
 from sqlalchemy.dialects.postgresql import aggregate_order_by
-
+from .utils import apply_filters_and_sorting
 
 def _flatten_dict(d, parent_key='', sep='_'):
     """ 'Achata' um dicionário aninhado. Ex: {'a': {'b': 1}} -> {'a_b': 1} """
@@ -89,7 +89,7 @@ def get_deputados(
     """
     Busca uma lista paginada de deputados, com filtros e ordenação dinâmicos.
     """
-    from .utils import apply_filters_and_sorting
+    
 
     # Query inicial
     query = db.query(models.Deputado)
@@ -250,7 +250,13 @@ def get_partidos(
     # Aplica paginação e retorna resultados
     return query_result.offset(skip).limit(limit).all()
 
-def get_orgaos(db: Session, skip: int = 0, limit: int = 100):
+def get_orgaos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    filters: Optional[Dict[str, Any]] = None,
+    sort: Optional[str] = None
+):
     """
     Busca uma lista paginada de órgãos, ordenados pelo nome, com filtragem e ordenação dinâmicas.
     """
@@ -265,9 +271,7 @@ def get_orgaos(db: Session, skip: int = 0, limit: int = 100):
     # Inicializa a query com o modelo Orgao
     query = db.query(models.Orgao)
 
-    # Aplica ordenação e filtros dinâmicos (se houver parâmetros na request)
-    filters = req.query_params.get('filters', {}) if 'req' in locals() or 'req' in globals() else {}
-
+    # Aplica filtros e ordenação dinâmicos
     query_result = apply_filters_and_sorting(
         query,
         model=models.Orgao,

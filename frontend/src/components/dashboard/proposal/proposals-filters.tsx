@@ -35,7 +35,7 @@ export function ProposalsFilters({
           </InputAdornment>
         }
         sx={{ flexGrow: 1, minWidth: '300px' }}
-        onChange={(e) => handleChange('ementa', e.target.value)}
+        onChange={(e) => handleChange('ementa__ilike', e.target.value)}
       />
       <FormControl sx={{ minWidth: 100 }} size="small">
         <InputLabel>Tipo</InputLabel>
