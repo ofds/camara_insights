@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Type, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import DateTime, Date, desc, asc, func, text
 import logging
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ class ProposicaoRepository(BaseRepository):
             select(self.model)
             .outerjoin(ProposicaoAIData, self.model.id == ProposicaoAIData.proposicao_id)
             .where(ProposicaoAIData.proposicao_id.is_(None))
+            .order_by(desc(self.model.dataApresentacao))\
             .limit(limit)
         )
         return self.session.execute(query).scalars().all()
