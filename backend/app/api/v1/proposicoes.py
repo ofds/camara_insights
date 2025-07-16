@@ -65,14 +65,14 @@ def read_proposicoes(
         "skip": skip
     }
 
-
 @router.get("/proposicoes/ranking", response_model=List[schemas.ProposicaoSchema])
 def read_proposicoes_ranking(
     period: str = Query("daily", enum=["daily", "monthly"]),
+    scope: Optional[str] = Query(None, enum=["Municipal", "Estadual", "Nacional"]),
     db: Session = Depends(get_db)
 ):
     """
-    Retorna uma lista das proposições de maior impacto, diário ou mensal.
+    Retorna uma lista das proposições de maior impacto, diário ou mensal, com filtro opcional por escopo.
     """
     today = date.today()
     if period == "daily":
@@ -82,8 +82,7 @@ def read_proposicoes_ranking(
     else:
         raise HTTPException(status_code=400, detail="Período inválido. Use 'daily' ou 'monthly'.")
 
-    return crud.get_proposicoes_by_impact_and_date(db=db, start_date=start_date)
-
+    return crud.get_proposicoes_by_impact_and_date(db=db, start_date=start_date, scope=scope)
 
 @router.get("/proposicoes/{proposicao_id}", response_model=schemas.ProposicaoSchema)
 def read_proposicao(proposicao_id: int, db: Session = Depends(get_db)):

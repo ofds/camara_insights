@@ -465,3 +465,43 @@ def get_deputados_avg_impact(db: Session, start_date: date, end_date: date) -> f
 
     result = db.query(func.avg(subquery.c.total_impacto)).scalar()
     return result or 0.0
+
+def get_proposicoes_by_impact_and_date(db: Session, start_date: date, limit: int = 10, scope: Optional[str] = None):
+    """
+    Busca as proposições com maior impacto dentro de um período de data,
+    com um filtro opcional por escopo.
+    """
+    query = db.query(
+        models.Proposicao,
+        models_ai.ProposicaoAIData.impact_score
+    )\
+        .join(models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id)\
+        .filter(models.Proposicao.dataApresentacao >= start_date)
+
+    if scope:
+        query = query.filter(models_ai.ProposicaoAIData.scope == scope)
+
+    results = query.order_by(desc(models_ai.ProposicaoAIData.impact_score))\
+        .limit(limit)\
+        .all()
+
+    proposicoes_list = []
+    for p, impact_score in results:
+        prop_data = {
+            'id': p.id,
+            'siglaTipo': p.siglaTipo,
+            'numero': p.numero,
+            'ano': p.ano,
+            'ementa': p.ementa,
+            'dataApresentacao': p.dataApresentacao.isoformat() if p.dataApresentacao else None,
+            'statusProposicao_descricaoSituacao': p.statusProposicao_descricaoSituacao,
+            'statusProposicao_descricaoTramitacao': p.statusProposicao_descricaoTramitacao,
+            'uriAutores': p.uriAutores,
+            'descricaoTipo': p.descricaoTipo,
+            'ementaDetalhada': p.ementaDetalhada,
+            'keywords': p.keywords,
+            'impact_score': impact_score or -1,
+        }
+        proposicoes_list.append(prop_data)
+
+    return proposicoes_list

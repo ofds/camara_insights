@@ -1,7 +1,9 @@
+// frontend/src/app/dashboard/page.tsx
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, CircularProgress, Alert, Grid } from '@mui/material'; // Ensure Grid is imported
+import { Box, CircularProgress, Alert, Grid } from '@mui/material';
 
 import WeeklyCalendar from '@/components/dashboard/overview/WeeklyCalendar';
 import ImpactTabs from '@/components/dashboard/overview/ImpactTabs';
@@ -15,6 +17,8 @@ function DashboardPage() {
   const [dailyPropositions, setDailyPropositions] = useState<ApiProposition[]>([]);
   const [monthlyPropositions, setMonthlyPropositions] = useState<ApiProposition[]>([]);
   const [monthlyDeputies, setMonthlyDeputies] = useState<ApiRankedDeputy[]>([]);
+  const [municipalPropositions, setMunicipalPropositions] = useState<ApiProposition[]>([]);
+  const [estadualPropositions, setEstadualPropositions] = useState<ApiProposition[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,23 +27,29 @@ function DashboardPage() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const [
-          eventosData, 
-          dailyPropositionsData, 
+          eventosData,
+          dailyPropositionsData,
           monthlyPropositionsData,
-          monthlyDeputiesData
+          monthlyDeputiesData,
+          municipalPropositionsData,
+          estadualPropositionsData,
         ] = await Promise.all([
           getEventosDaSemana(),
           getRankedPropositions('daily'),
           getRankedPropositions('monthly'),
-          getRankedDeputies()
+          getRankedDeputies(),
+          getRankedPropositions('monthly', 'Municipal'),
+          getRankedPropositions('monthly', 'Estadual'),
         ]);
 
         setEventos(eventosData);
         setDailyPropositions(dailyPropositionsData);
         setMonthlyPropositions(monthlyPropositionsData);
         setMonthlyDeputies(monthlyDeputiesData);
+        setMunicipalPropositions(municipalPropositionsData);
+        setEstadualPropositions(estadualPropositionsData);
 
       } catch (e: any) {
         setError(e.message || "Ocorreu um erro desconhecido.");
@@ -60,18 +70,17 @@ function DashboardPage() {
       )}
       {error && <Alert severity="error">Falha ao carregar dados: {error}</Alert>}
       {!isLoading && !error && (
-        // --- CORRECTED GRID LAYOUT ---
-        // We use a Grid container with vertical spacing.
-        // Each direct child is a Grid item that spans the full width (xs={12}).
         <Grid container spacing={3}>
           <Grid item xs={12} sx={{ width: '100%' }} >
             <WeeklyCalendar events={eventos} />
           </Grid>
           <Grid item xs={12} sx={{ width: '100%' }}>
-            <ImpactTabs 
+            <ImpactTabs
               dailyPropositions={dailyPropositions}
               monthlyPropositions={monthlyPropositions}
               monthlyDeputies={monthlyDeputies}
+              municipalPropositions={municipalPropositions}
+              estadualPropositions={estadualPropositions}
             />
           </Grid>
         </Grid>

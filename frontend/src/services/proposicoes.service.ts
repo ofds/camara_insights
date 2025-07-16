@@ -25,8 +25,14 @@ export interface PaginatedProposals {
  * @param period - The time period for the ranking ('daily' | 'monthly').
  * @returns A promise that resolves to an array of ApiProposition.
  */
-export async function getRankedPropositions(period: 'daily' | 'monthly'): Promise<ApiProposition[]> {
+export async function getRankedPropositions(
+  period: 'daily' | 'monthly',
+  scope?: 'Municipal' | 'Estadual' | 'Nacional'
+): Promise<ApiProposition[]> {
     const params = new URLSearchParams({ period });
+    if (scope) {
+      params.append('scope', scope);
+    }
     const response = await fetch(`${API_BASE_URL}/proposicoes/ranking?${params.toString()}`);
 
     if (!response.ok) {

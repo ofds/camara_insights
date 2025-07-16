@@ -1,3 +1,5 @@
+// frontend/src/components/dashboard/overview/ImpactTabs.tsx
+
 'use client';
 
 import { useState, SyntheticEvent } from 'react';
@@ -43,12 +45,16 @@ interface ImpactTabsProps {
   dailyPropositions: ApiProposition[];
   monthlyPropositions: ApiProposition[];
   monthlyDeputies: ApiRankedDeputy[];
+  municipalPropositions: ApiProposition[];
+  estadualPropositions: ApiProposition[];
 }
 
 export default function ImpactTabs({
   dailyPropositions,
   monthlyPropositions,
-  monthlyDeputies
+  monthlyDeputies,
+  municipalPropositions,
+  estadualPropositions
 }: ImpactTabsProps) {
   const [value, setValue] = useState(0);
 
@@ -72,6 +78,8 @@ export default function ImpactTabs({
                 <Tab label="Impacto Hoje" id="impact-tab-0" aria-controls="impact-tabpanel-0" />
                 <Tab label="Impacto no Mês" id="impact-tab-1" aria-controls="impact-tabpanel-1" />
                 <Tab label="Deputados do Mês" id="impact-tab-2" aria-controls="impact-tabpanel-2" />
+                <Tab label="Impacto Municipal" id="impact-tab-3" aria-controls="impact-tabpanel-3" />
+                <Tab label="Impacto Estadual" id="impact-tab-4" aria-controls="impact-tabpanel-4" />
               </Tabs>
             </Box>
 
@@ -83,6 +91,12 @@ export default function ImpactTabs({
             </TabPanel>
             <TabPanel value={value} index={2}>
               <DeputiesList deputies={monthlyDeputies} />
+            </TabPanel>
+            <TabPanel value={value} index={3}>
+                <PropositionsList propositions={municipalPropositions} />
+            </TabPanel>
+            <TabPanel value={value} index={4}>
+                <PropositionsList propositions={estadualPropositions} />
             </TabPanel>
           </Box>
         </CardContent>
