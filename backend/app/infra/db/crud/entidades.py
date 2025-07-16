@@ -216,6 +216,7 @@ def get_proposicoes(
 
     query_result = apply_sorting(
         query,
+        model=models.Proposicao,
         sort=sort,
         allowed_sort_fields=allowed_sort_fields,
         default_sort_field="dataApresentacao"
