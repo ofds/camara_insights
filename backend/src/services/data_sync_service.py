@@ -223,3 +223,46 @@ class DataSyncService:
             results[table.__tablename__] = count
             print(f"Cleaned {count} records from {table.__tablename__}")
         return results
+    
+    async def sync_propositions(self, params: Dict[str, Any] = None, batch_size: int = 50) -> int:
+        """Sync propositions with given parameters."""
+        from app.infra.db.models.entidades import Proposicao
+        return await self.sync_entity_with_details(Proposicao, "/proposicoes", params or {})
+    
+    async def sync_proposition_authors(self) -> int:
+        """Sync proposition authors."""
+        from app.infra.db.models.entidades import Proposicao, ProposicaoAutor
+        return await self.sync_child_entities(
+            Proposicao,
+            ProposicaoAutor,
+            "/proposicoes/{id}/autores",
+            "proposicao_id",
+            paginated=False
+        )
+    
+    async def sync_tramitacoes(self) -> int:
+        """Sync status updates (tramitações) for propositions."""
+        from app.infra.db.models.entidades import Proposicao, Tramitacao
+        return await self.sync_child_entities(
+            Proposicao,
+            Tramitacao,
+            "/proposicoes/{id}/tramitacoes",
+            "proposicao_id",
+            paginated=False
+        )
+    
+    async def sync_related_propositions(self) -> int:
+        """Sync related propositions."""
+        from app.infra.db.models.entidades import Proposicao, ProposicaoRelacionada
+        return await self.sync_child_entities(
+            Proposicao,
+            ProposicaoRelacionada,
+            "/proposicoes/{id}/relacionadas",
+            "proposicao_id",
+            paginated=False
+        )
+    
+    async def sync_events(self, params: Dict[str, Any] = None, batch_size: int = 50) -> int:
+        """Sync events with given parameters."""
+        from app.infra.db.models.entidades import Evento
+        return await self.sync_entity_with_details(Evento, "/eventos", params or {})

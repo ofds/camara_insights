@@ -17,6 +17,8 @@ from scripts.tasks.sync_referencias import sync_references
 from scripts.tasks.check_ai_data import check_ai_data
 from scripts.tasks.score_propositions import process_backlog, process_specific_propositions
 from scripts.tasks.orchestrate import main as orchestrate_main
+from scripts.tasks.daily_priority_sync import daily_priority_sync
+from scripts.tasks.weekly_event_sync import weekly_event_sync
 
 
 def main():
@@ -45,6 +47,19 @@ def main():
     score_parser.add_argument('--rate-limit', type=int, default=18, help='Requests per minute limit')
     score_parser.add_argument('--ids', nargs='*', type=int, help='Specific proposition IDs to process')
     
+    # Daily priority sync
+    daily_sync_parser = subparsers.add_parser('daily-sync', help='Daily sync of prioritized information')
+    daily_sync_parser.add_argument('--days-back', type=int, default=30, help='Days back to sync')
+    daily_sync_parser.add_argument('--max-propositions', type=int, default=100, help='Max propositions to sync')
+    daily_sync_parser.add_argument('--no-authors', action='store_true', help='Skip author sync')
+    daily_sync_parser.add_argument('--no-status', action='store_true', help='Skip status updates')
+    
+    # Weekly event sync
+    weekly_sync_parser = subparsers.add_parser('weekly-sync', help='Weekly sync of events for calendar')
+    weekly_sync_parser.add_argument('--weeks-ahead', type=int, default=2, help='Weeks ahead to sync')
+    weekly_sync_parser.add_argument('--include-past-days', type=int, default=7, help='Past days to include')
+    weekly_sync_parser.add_argument('--event-types', nargs='+', help='Specific event types to sync')
+    
     # Orchestrate
     orchestrate_parser = subparsers.add_parser('orchestrate', help='Run complete ETL orchestration')
     
@@ -69,6 +84,19 @@ def main():
             asyncio.run(process_specific_propositions(args.ids))
         else:
             asyncio.run(process_backlog(args.batch_size, args.rate_limit))
+    elif args.command == 'daily-sync':
+        asyncio.run(daily_priority_sync(
+            days_back=args.days_back,
+            max_propositions=args.max_propositions,
+            include_authors=not args.no_authors,
+            include_status=not args.no_status
+        ))
+    elif args.command == 'weekly-sync':
+        asyncio.run(weekly_event_sync(
+            weeks_ahead=args.weeks_ahead,
+            include_past_days=args.include_past_days,
+            event_types=args.event_types
+        ))
     elif args.command == 'orchestrate':
         asyncio.run(orchestrate_main())
 
