@@ -120,7 +120,8 @@ def get_proposicoes(
     skip: int = 0,
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
-    sort: Optional[str] = None
+    sort: Optional[str] = None,
+    scored: Optional[bool] = None
 ):
     Autor = aliased(models.Deputado)
 
@@ -147,6 +148,15 @@ def get_proposicoes(
     ).outerjoin(
         author_subquery, models.Proposicao.id == author_subquery.c.pid
     )
+
+    if filters and 'autor' in filters:
+        autor_filter_value = f"%{filters['autor']}%"
+        query = query.filter(author_subquery.c.autores_db.ilike(autor_filter_value))
+        del filters['autor']
+    
+    if scored:
+        query = query.filter(models_ai.ProposicaoAIData.id != None)
+
 
     # Apply filters first
     query = apply_filters(

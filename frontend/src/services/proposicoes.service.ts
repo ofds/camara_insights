@@ -46,7 +46,7 @@ export async function getPropositions({
   limit: number;
   skip: number;
   sort: string;
-  filters: { [key: string]: string | number };
+  filters: { [key: string]: string | number | boolean };
 }): Promise<PaginatedProposals> {
   const params = new URLSearchParams();
   params.append('limit', String(limit));
@@ -57,7 +57,14 @@ export async function getPropositions({
 
   for (const key in filters) {
     if (Object.prototype.hasOwnProperty.call(filters, key)) {
-      params.append(key, String(filters[key]));
+      const value = filters[key];
+      if (typeof value === 'boolean') {
+        if (value) {
+          params.append(key, String(value));
+        }
+      } else {
+        params.append(key, String(value));
+      }
     }
   }
 

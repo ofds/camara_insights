@@ -231,14 +231,60 @@ class DataSyncService:
     
     async def sync_proposition_authors(self) -> int:
         """Sync proposition authors."""
-        from app.infra.db.models.entidades import Proposicao, ProposicaoAutor
-        return await self.sync_child_entities(
-            Proposicao,
-            ProposicaoAutor,
-            "/proposicoes/{id}/autores",
-            "proposicao_id",
-            paginated=False
-        )
+        from app.infra.db.models.entidades import Proposicao
+        from app.infra.db.models.entidades import proposicao_autores
+        
+        # Handle author relationships through the relationship table
+        from sqlalchemy import insert
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        
+        print("\n--- Syncing proposition authors ---")
+        
+        # Get all propositions
+        propositions = self.session.query(Proposicao).all()
+        total_authors = 0
+        
+        semaphore = asyncio.Semaphore(self.concurrency_limit)
+        
+        async def fetch_authors_for_proposition(proposition):
+            async with semaphore:
+                endpoint = f"/proposicoes/{proposition.id}/autores"
+                response = await camara_api_client.get(endpoint)
+                if response and 'dados' in response:
+                    authors = response['dados']
+                    relationship_data = []
+                    for author in authors:
+                        if 'uri' in author:
+                            deputado_id = int(author['uri'].split('/')[-1])
+                            relationship_data.append({
+                                'proposicao_id': proposition.id,
+                                'deputado_id': deputado_id
+                            })
+                    return relationship_data
+                return []
+        
+        # Process in batches
+        for i in range(0, len(propositions), self.batch_size):
+            batch = propositions[i:i + self.batch_size]
+            tasks = [fetch_authors_for_proposition(prop) for prop in batch]
+            results = await asyncio.gather(*tasks)
+            
+            # Flatten results and insert
+            all_relationships = []
+            for relationships in results:
+                all_relationships.extend(relationships)
+            
+            if all_relationships:
+                stmt = pg_insert(proposicao_autores).values(all_relationships)
+                stmt = stmt.on_conflict_do_nothing()
+                self.session.execute(stmt)
+                self.session.commit()
+                total_authors += len(all_relationships)
+            
+            print(f"Processed batch {i//self.batch_size + 1}/{(len(propositions)//self.batch_size) + 1}")
+        
+        print(f"Sync of proposition authors completed. {total_authors} relationships processed.")
+        return total_authors
     
     async def sync_tramitacoes(self) -> int:
         """Sync status updates (tramitações) for propositions."""
@@ -253,10 +299,10 @@ class DataSyncService:
     
     async def sync_related_propositions(self) -> int:
         """Sync related propositions."""
-        from app.infra.db.models.entidades import Proposicao, ProposicaoRelacionada
+        from app.infra.db.models.entidades import Proposicao
         return await self.sync_child_entities(
             Proposicao,
-            ProposicaoRelacionada,
+            Proposicao,
             "/proposicoes/{id}/relacionadas",
             "proposicao_id",
             paginated=False

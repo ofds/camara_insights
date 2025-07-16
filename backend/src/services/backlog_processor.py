@@ -79,7 +79,8 @@ class BacklogProcessor:
                     print(f"\n--- Batch #{batch_number}: Fetching up to {self.batch_size} propositions... ---")
                     
                     # Get unscored propositions
-                    repository = ProposicaoRepository(session, None)
+                    from app.infra.db.models.entidades import Proposicao
+                    repository = ProposicaoRepository(session, Proposicao)
                     propositions_to_score = repository.get_unscored(self.batch_size)
                     
                     if not propositions_to_score:

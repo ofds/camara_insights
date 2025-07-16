@@ -82,10 +82,9 @@ async def daily_priority_sync(
             status_synced = await sync_service.sync_tramitacoes()
             results["status_updates"] = status_synced
         
-        # Sync related propositions
-        if propositions_synced > 0:
-            related_synced = await sync_service.sync_related_propositions()
-            results["related_propositions"] = related_synced
+        # Skip related propositions sync as it's not implemented
+        # This can be added later if needed
+        results["related_propositions"] = 0
         
         print(f"--- Daily Priority Sync Completed ---")
         print(f"Propositions synced: {results['propositions']}")

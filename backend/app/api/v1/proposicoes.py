@@ -28,12 +28,13 @@ def read_proposicoes(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(100, ge=1, le=200, description="Número de registros a retornar"),
-    sort: Optional[str] = Query(None, description="Ordena os resultados. Formato: campo:direcao (ex: ano:desc,id:asc)")
+    sort: Optional[str] = Query(None, description="Ordena os resultados. Formato: campo:direcao (ex: ano:desc,id:asc)"),
+    scored: Optional[bool] = Query(None, description="Filter for scored proposals")
 ):
     """
     Retorna uma lista de proposições com paginação, filtros e ordenação dinâmicos.
     """
-    filter_exclude_params = {'skip', 'limit', 'sort'}
+    filter_exclude_params = {'skip', 'limit', 'sort', 'scored'}
     filters = {k: v for k, v in req.query_params.items() if k not in filter_exclude_params}
 
     # Data returned from CRUD function
@@ -42,7 +43,8 @@ def read_proposicoes(
         skip=skip,
         limit=limit,
         filters=filters,
-        sort=sort
+        sort=sort,
+        scored=scored
     )
 
     # *** FIX IS HERE ***

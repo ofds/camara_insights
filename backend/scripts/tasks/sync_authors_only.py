@@ -57,10 +57,28 @@ async def sync_proposition_authors() -> int:
             authors_data = await fetch_authors_batch(batch)
             
             if authors_data:
-                from src.data.repository import BaseRepository
-                author_repo = BaseRepository(session, models.ProposicaoAutor)
-                author_repo.bulk_insert(authors_data)
-                total_authors += len(authors_data)
+                # Handle author relationships through the many-to-many table
+                from sqlalchemy import insert
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+                
+                # Prepare data for the relationship table
+                relationship_data = []
+                for author in authors_data:
+                    if 'uri' in author and 'proposicao_id' in author:
+                        # Extract deputado_id from URI
+                        deputado_id = int(author['uri'].split('/')[-1])
+                        relationship_data.append({
+                            'proposicao_id': author['proposicao_id'],
+                            'deputado_id': deputado_id
+                        })
+                
+                if relationship_data:
+                    # Use bulk insert for the relationship table
+                    stmt = pg_insert(models.proposicao_autores).values(relationship_data)
+                    stmt = stmt.on_conflict_do_nothing()
+                    session.execute(stmt)
+                    session.commit()
+                    total_authors += len(relationship_data)
             
             print(f"Processed batch {i//batch_size + 1}/{(len(propositions)//batch_size) + 1}")
         
