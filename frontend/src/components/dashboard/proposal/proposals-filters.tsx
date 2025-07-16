@@ -83,13 +83,22 @@ export function ProposalsFilters({
           </Select>
       </FormControl>
       <TextField
-        label="Data Apresentação"
+        label="Data Início"
         type="date"
         size="small"
         InputLabelProps={{
           shrink: true,
         }}
-        onChange={(e) => handleChange('dataApresentacao', e.target.value)}
+        onChange={(e) => handleChange('data_inicio', e.target.value)}
+      />
+      <TextField
+        label="Data Fim"
+        type="date"
+        size="small"
+        InputLabelProps={{
+          shrink: true,
+        }}
+        onChange={(e) => handleChange('data_fim', e.target.value)}
       />
       <TextField
         label="Autor"
@@ -110,6 +119,7 @@ export function ProposalsFilters({
         label="Ano"
         variant="outlined"
         type="number"
+        defaultValue="2025"
         size="small"
         sx={{ minWidth: 90, maxWidth: '100px' }}
         onChange={(e) => handleChange('ano', e.target.value)}

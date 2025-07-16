@@ -1,3 +1,5 @@
+# backend/app/api/v1/proposicoes.py
+
 import asyncio
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy.orm import Session
@@ -29,13 +31,21 @@ def read_proposicoes(
     skip: int = Query(0, ge=0, description="Número de registros a pular"),
     limit: int = Query(100, ge=1, le=200, description="Número de registros a retornar"),
     sort: Optional[str] = Query(None, description="Ordena os resultados. Formato: campo:direcao (ex: ano:desc,id:asc)"),
-    scored: Optional[bool] = Query(None, description="Filter for scored proposals")
+    scored: Optional[bool] = Query(None, description="Filter for scored proposals"),
+    data_inicio: Optional[date] = Query(None, description="Data de início para o filtro de data de apresentação"),
+    data_fim: Optional[date] = Query(None, description="Data de fim para o filtro de data de apresentação")
 ):
     """
     Retorna uma lista de proposições com paginação, filtros e ordenação dinâmicos.
     """
-    filter_exclude_params = {'skip', 'limit', 'sort', 'scored'}
+    filter_exclude_params = {'skip', 'limit', 'sort', 'scored', 'data_inicio', 'data_fim'}
     filters = {k: v for k, v in req.query_params.items() if k not in filter_exclude_params}
+
+    if data_inicio:
+        filters['dataApresentacao__gte'] = data_inicio
+    if data_fim:
+        # To make the range inclusive, we add one day to the end date and use 'less than'
+        filters['dataApresentacao__lte'] = data_fim + timedelta(days=1)
 
     # Data returned from CRUD function
     crud_result = crud.get_proposicoes(
@@ -47,13 +57,12 @@ def read_proposicoes(
         scored=scored
     )
 
-    # *** FIX IS HERE ***
     # Reconstruct the response to match the ProposicaoPaginatedResponse schema
     return {
         "proposicoes": crud_result["proposicoes"],
-        "total": crud_result["total_count"], # Rename total_count to total
-        "limit": limit,                      # Add limit from query params
-        "skip": skip                         # Add skip from query params
+        "total": crud_result["total_count"],
+        "limit": limit,
+        "skip": skip
     }
 
 
