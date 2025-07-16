@@ -23,6 +23,7 @@ import {
   Typography,
   Link,
   Button,
+  ListItemButton,
 } from '@mui/material';
 import { ArrowLeft as ArrowLeftIcon } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
@@ -157,18 +158,24 @@ export default function ProposalDetailsPage(): React.JSX.Element {
             </Card>
 
             {/* Card de Autores */}
-            <Card>
-    <CardHeader title="Autores" />
-    <List dense>
-    {autores.length > 0 ? autores.map(autor => {
+<Card>
+  <CardHeader title="Autores" />
+  <List dense>
+    {autores.length > 0 ? (
+      autores.map((autor) => {
         const deputyId = autor.uri.split('/').pop();
         return (
-        <ListItem key={autor.uri} button component="a" href={paths.dashboard.deputado(deputyId)}>
+          <ListItemButton key={autor.uri} component="a" href={paths.dashboard.deputado(deputyId)}>
             <ListItemText primary={autor.nome} secondary={autor.tipo} />
-        </ListItem>
+          </ListItemButton>
         );
-    }) : <ListItem><ListItemText primary="Nenhum autor encontrado." /></ListItem>}
-    </List>
+      })
+    ) : (
+      <ListItem>
+        <ListItemText primary="Nenhum autor encontrado." />
+      </ListItem>
+    )}
+  </List>
 </Card>
 
             {/* Card de Temas */}
