@@ -1,27 +1,27 @@
-// frontend/src/app/dashboard/deputados/[id]/page.tsx
-
 'use client';
 
-import * as React from 'react';
-import { notFound, useParams } from 'next/navigation';
 import {
-  Avatar,
-  Box,
-  Card,
-  CardContent,
-  CardHeader,
-  Container,
-  Divider,
-  Grid,
-  Link,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  Typography,
-  CircularProgress,
-  Alert
+    Alert,
+    Avatar,
+    Box,
+    Card,
+    CardContent,
+    CardHeader,
+    CircularProgress,
+    Container,
+    Divider,
+    Grid,
+    Link,
+    List,
+    ListItem,
+    ListItemText,
+    Stack,
+    Typography,
 } from '@mui/material';
+import { notFound, useParams } from 'next/navigation';
+import * as React from 'react';
+
+import ProposalActivityHeatmap from '@/components/dashboard/deputados/ProposalActivityHeatmap';
 import { paths } from '@/paths';
 import { getDeputadoById } from '@/services/deputados.service';
 import type { DeputadoDetalhado, Proposicao } from '@/types/deputado';
@@ -158,6 +158,8 @@ export default function DeputadoDetailPage(): React.JSX.Element {
               </Grid>
             </CardContent>
           </Card>
+          
+          <ProposalActivityHeatmap deputadoId={deputado.id} />
 
           {/* Gabinete Info */}
           <Card>

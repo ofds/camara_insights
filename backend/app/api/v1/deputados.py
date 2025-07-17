@@ -96,3 +96,13 @@ def read_deputados(
     res.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
     
     return deputados
+
+@router.get("/deputados/{deputado_id}/activity/proposals", response_model=schemas.PropostaActivitySchema)
+def read_deputado_proposal_activity(deputado_id: int, db: Session = Depends(get_db)):
+    """
+    Retorna as datas de apresentação das propostas de um deputado.
+    """
+    activity_dates = crud.get_proposal_activity(db, deputado_id=deputado_id)
+    if not activity_dates:
+        raise HTTPException(status_code=404, detail="Nenhuma atividade de proposta encontrada para este deputado")
+    return {"activity": activity_dates}

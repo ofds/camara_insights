@@ -225,3 +225,6 @@ class DeputadoImpactoAvgSchema(BaseModel):
     average_impact: float
     start_date: date
     end_date: date
+
+class PropostaActivitySchema(BaseModel):
+    activity: List[datetime]

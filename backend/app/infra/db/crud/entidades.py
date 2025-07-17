@@ -505,3 +505,16 @@ def get_proposicoes_by_impact_and_date(db: Session, start_date: date, limit: int
         proposicoes_list.append(prop_data)
 
     return proposicoes_list
+
+def get_proposal_activity(db: Session, deputado_id: int) -> List[datetime]:
+    """
+    Fetches the presentation dates of proposals authored by a specific deputy.
+    """
+    query = (
+        db.query(models.Proposicao.dataApresentacao)
+        .join(models.proposicao_autores)
+        .filter(models.proposicao_autores.c.deputado_id == deputado_id)
+        .all()
+    )
+    # The result will be a list of tuples, so you'll want to extract the dates.
+    return [item[0] for item in query]

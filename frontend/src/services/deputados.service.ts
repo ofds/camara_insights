@@ -1,6 +1,6 @@
 // src/services/deputados.service.ts
 
-import { type ApiRankedDeputy, type Deputado, type DeputadoDetalhado } from '@/types/deputado';
+import { type ApiRankedDeputy, type Deputado, type DeputadoDetalhado, type PropostaActivity } from '@/types/deputado';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -94,6 +94,25 @@ export async function getDeputadoById(id: number): Promise<DeputadoDetalhado> {
       throw new Error('Deputado não encontrado.');
     }
     throw new Error('Não foi possível buscar os detalhes do deputado.');
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetches the proposal presentation activity for a single deputy by their ID.
+ * @param id - The ID of the deputy.
+ * @returns A promise that resolves to the proposal activity data.
+ */
+export async function getDeputadoProposalActivity(id: number): Promise<PropostaActivity> {
+  const response = await fetch(`${API_BASE_URL}/deputados/${id}/activity/proposals`);
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      // Return an empty activity list if no data is found, which is an expected case.
+      return { activity: [] };
+    }
+    throw new Error("Não foi possível buscar os dados de atividade de propostas.");
   }
 
   return response.json();
