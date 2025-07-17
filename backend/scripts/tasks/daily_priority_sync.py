@@ -9,7 +9,7 @@ import asyncio
 import sys
 import os
 from datetime import datetime, timedelta
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -66,20 +66,20 @@ async def daily_priority_sync(
         }
         
         # Sync propositions
-        propositions_synced = await sync_service.sync_propositions(
+        propositions_synced_ids = await sync_service.sync_propositions(
             params=proposition_params,
             batch_size=20
         )
-        results["propositions"] = propositions_synced
+        results["propositions"] = len(propositions_synced_ids)
         
-        # Sync authors if requested
-        if include_authors and propositions_synced > 0:
-            authors_synced = await sync_service.sync_proposition_authors()
+        # Sync authors if requested, for the synced propositions
+        if include_authors and propositions_synced_ids:
+            authors_synced = await sync_service.sync_proposition_authors(proposition_ids=propositions_synced_ids)
             results["authors"] = authors_synced
         
-        # Sync status updates (tramitações) if requested
-        if include_status and propositions_synced > 0:
-            status_synced = await sync_service.sync_tramitacoes()
+        # Sync status updates (tramitações) if requested, for the synced propositions
+        if include_status and propositions_synced_ids:
+            status_synced = await sync_service.sync_tramitacoes(proposition_ids=propositions_synced_ids)
             results["status_updates"] = status_synced
         
         # Skip related propositions sync as it's not implemented
@@ -107,8 +107,8 @@ def main():
     parser = argparse.ArgumentParser(description="Daily priority sync for critical information")
     parser.add_argument("--days-back", type=int, default=30, help="Days back to sync")
     parser.add_argument("--max-propositions", type=int, default=100, help="Max propositions to sync")
-    parser.add_argument("--no-authors", action="store_true", help="Skip author sync")
-    parser.add_argument("--no-status", action="store_true", help="Skip status updates")
+    parser.add_argument("--no-authors", action='store_true', help="Skip author sync")
+    parser.add_argument("--no-status", action='store_true', help="Skip status updates")
     
     args = parser.parse_args()
     

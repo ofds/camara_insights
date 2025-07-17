@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import Date, DateTime
 
 from app.infra.camara_api import camara_api_client
-from src.data.repository import BaseRepository
-from app.infra.db.models.entidades import Base
+from src.data.repository import BaseRepository, ProposicaoRepository
+from app.infra.db.models.entidades import Base, Proposicao, Tramitacao
 
 
 class DataSyncService:
@@ -96,8 +96,8 @@ class DataSyncService:
         async with semaphore:
             return await camara_api_client.get(endpoint=endpoint, params=params)
     
-    async def sync_entity_with_details(self, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}) -> int:
-        """Sync entities with detailed information."""
+    async def sync_entity_with_details(self, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}) -> List[int]:
+        """Sync entities with detailed information and return their IDs."""
         param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
         print(f"\n--- Starting sync for {model.__tablename__} with filters: [{param_str}] ---")
         
@@ -105,20 +105,22 @@ class DataSyncService:
         
         if not summary_data:
             print(f"No items found for {model.__tablename__} with applied filters.")
-            return 0
+            return []
         
         print(f"{len(summary_data)} items discovered. Fetching details...")
         
         repository = BaseRepository(self.session, model)
         semaphore = asyncio.Semaphore(self.concurrency_limit)
         all_tasks = []
+        processed_ids = []
+
+        pk_name = model.__mapper__.primary_key[0].name
         
         for item in summary_data:
             if 'uri' in item and item['uri']:
                 detail_endpoint = item['uri'].replace(camara_api_client.base_url, "")
                 all_tasks.append(self._fetch_with_semaphore(semaphore, detail_endpoint))
         
-        total_processed = 0
         for i in range(0, len(all_tasks), self.batch_size):
             batch_tasks = all_tasks[i:i + self.batch_size]
             responses = await asyncio.gather(*batch_tasks)
@@ -130,24 +132,34 @@ class DataSyncService:
                 
                 transformed_data = self._transform_data_for_model(response['dados'], model)
                 all_data_to_upsert.append(transformed_data)
-            
+                if pk_name in transformed_data:
+                    processed_ids.append(transformed_data[pk_name])
+
             if all_data_to_upsert:
                 repository.bulk_upsert(all_data_to_upsert)
-                total_processed += len(all_data_to_upsert)
             
             print(f"Batch {i//self.batch_size + 1}/{(len(all_tasks)//self.batch_size) + 1} for {model.__tablename__} processed.")
         
-        print(f"Sync with details for {model.__tablename__} completed. {total_processed} records processed.")
-        return total_processed
+        print(f"Sync with details for {model.__tablename__} completed. {len(processed_ids)} records processed.")
+        return processed_ids
     
     async def sync_child_entities(self, parent_model: Type[Base], child_model: Type[Base], 
                                 endpoint_template: str, child_fk_name: str, 
-                                params: Dict[str, Any] = {}, paginated: bool = True) -> int:
+                                params: Dict[str, Any] = {}, paginated: bool = True,
+                                parent_ids_list: Optional[List[int]] = None) -> int:
         """Sync child entities for a parent entity."""
         param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
         print(f"\n--- Syncing child entity: {child_model.__tablename__} with filters: [{param_str}] ---")
         
-        parent_ids = [pid[0] for pid in self.session.query(parent_model.id).all()]
+        if parent_ids_list:
+            parent_ids = parent_ids_list
+        else:
+            parent_ids = [pid[0] for pid in self.session.query(parent_model.id).all()]
+
+        if not parent_ids:
+            print(f"No parent IDs provided or found for {parent_model.__tablename__}.")
+            return 0
+
         semaphore = asyncio.Semaphore(self.concurrency_limit)
         
         async def fetch_child_data(parent_id):
@@ -224,24 +236,29 @@ class DataSyncService:
             print(f"Cleaned {count} records from {table.__tablename__}")
         return results
     
-    async def sync_propositions(self, params: Dict[str, Any] = None, batch_size: int = 50) -> int:
-        """Sync propositions with given parameters."""
-        from app.infra.db.models.entidades import Proposicao
+    async def sync_propositions(self, params: Dict[str, Any] = None, batch_size: int = 50) -> List[int]:
+        """Sync propositions with given parameters and return their IDs."""
         return await self.sync_entity_with_details(Proposicao, "/proposicoes", params or {})
     
-    async def sync_proposition_authors(self) -> int:
-        """Sync proposition authors."""
-        from app.infra.db.models.entidades import Proposicao
+    async def sync_proposition_authors(self, proposition_ids: Optional[List[int]] = None) -> int:
+        """Sync proposition authors, optionally for a specific list of propositions."""
         from app.infra.db.models.entidades import proposicao_autores
-        
-        # Handle author relationships through the relationship table
-        from sqlalchemy import insert
-        from sqlalchemy.dialects.postgresql import insert as pg_insert
         
         print("\n--- Syncing proposition authors ---")
         
-        # Get all propositions
-        propositions = self.session.query(Proposicao).all()
+        repository = ProposicaoRepository(self.session, Proposicao)
+        
+        if proposition_ids:
+            propositions_query = self.session.query(Proposicao).filter(Proposicao.id.in_(proposition_ids))
+        else:
+            propositions_query = self.session.query(Proposicao)
+
+        propositions = propositions_query.all()
+
+        if not propositions:
+            print("No propositions to sync authors for.")
+            return 0
+        
         total_authors = 0
         
         semaphore = asyncio.Semaphore(self.concurrency_limit)
@@ -254,12 +271,15 @@ class DataSyncService:
                     authors = response['dados']
                     relationship_data = []
                     for author in authors:
-                        if 'uri' in author:
-                            deputado_id = int(author['uri'].split('/')[-1])
-                            relationship_data.append({
-                                'proposicao_id': proposition.id,
-                                'deputado_id': deputado_id
-                            })
+                        if 'uri' in author and '/deputados/' in author['uri']:
+                            try:
+                                deputado_id = int(author['uri'].split('/')[-1])
+                                relationship_data.append({
+                                    'proposicao_id': proposition.id,
+                                    'deputado_id': deputado_id
+                                })
+                            except (ValueError, IndexError):
+                                pass # Ignore if ID is not found
                     return relationship_data
                 return []
         
@@ -270,11 +290,10 @@ class DataSyncService:
             results = await asyncio.gather(*tasks)
             
             # Flatten results and insert
-            all_relationships = []
-            for relationships in results:
-                all_relationships.extend(relationships)
+            all_relationships = [item for sublist in results for item in sublist]
             
             if all_relationships:
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
                 stmt = pg_insert(proposicao_autores).values(all_relationships)
                 stmt = stmt.on_conflict_do_nothing()
                 self.session.execute(stmt)
@@ -286,20 +305,19 @@ class DataSyncService:
         print(f"Sync of proposition authors completed. {total_authors} relationships processed.")
         return total_authors
     
-    async def sync_tramitacoes(self) -> int:
+    async def sync_tramitacoes(self, proposition_ids: Optional[List[int]] = None) -> int:
         """Sync status updates (tramitações) for propositions."""
-        from app.infra.db.models.entidades import Proposicao, Tramitacao
         return await self.sync_child_entities(
             Proposicao,
             Tramitacao,
             "/proposicoes/{id}/tramitacoes",
             "proposicao_id",
-            paginated=False
+            paginated=False,
+            parent_ids_list=proposition_ids
         )
     
     async def sync_related_propositions(self) -> int:
         """Sync related propositions."""
-        from app.infra.db.models.entidades import Proposicao
         return await self.sync_child_entities(
             Proposicao,
             Proposicao,
@@ -311,4 +329,5 @@ class DataSyncService:
     async def sync_events(self, params: Dict[str, Any] = None, batch_size: int = 50) -> int:
         """Sync events with given parameters."""
         from app.infra.db.models.entidades import Evento
-        return await self.sync_entity_with_details(Evento, "/eventos", params or {})
+        processed_ids = await self.sync_entity_with_details(Evento, "/eventos", params or {})
+        return len(processed_ids)
