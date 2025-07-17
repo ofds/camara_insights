@@ -7,6 +7,20 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { Select, MenuItem, InputLabel, FormControl, TextField, FormControlLabel, Switch } from '@mui/material';
 
+// Array com os tipos de proposição para facilitar a manutenção
+const proposalTypes = [
+  { sigla: 'MPV', nome: 'Medida Provisória' },
+  { sigla: 'PDC', nome: 'Projeto de Decreto Legislativo' },
+  { sigla: 'PEC', nome: 'Proposta de Emenda à Constituição' },
+  { sigla: 'PL', nome: 'Projeto de Lei' },
+  { sigla: 'PLP', nome: 'Projeto de Lei Complementar' },
+  { sigla: 'PLV', nome: 'Projeto de Lei de Conversão' },
+  { sigla: 'PRC', nome: 'Projeto de Resolução' },
+  { sigla: 'RCP', nome: 'Requerimento de Instituição de CPI' },
+  { sigla: 'REC', nome: 'Recurso' },
+  { sigla: 'REQ', nome: 'Requerimento' },
+];
+
 export function ProposalsFilters({
   onFilterChange,
 }: {
@@ -47,11 +61,11 @@ export function ProposalsFilters({
           <MenuItem value="">
             <em>Todos</em>
           </MenuItem>
-          <MenuItem value="PEC">PEC</MenuItem>
-          <MenuItem value="PL">PL</MenuItem>
-          <MenuItem value="PLP">PLP</MenuItem>
-          <MenuItem value="MPV">MPV</MenuItem>
-          <MenuItem value="REQ">REQ</MenuItem>
+          {proposalTypes.map((type) => (
+            <MenuItem key={type.sigla} value={type.sigla} title={type.nome}>
+              {type.sigla}
+            </MenuItem>
+          ))}
         </Select>
       </FormControl>
       <FormControl sx={{ minWidth: 120 }} size="small">
