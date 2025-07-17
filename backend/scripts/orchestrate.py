@@ -1,54 +1,111 @@
+# backend/scripts/orchestrate.py
 import asyncio
+import sys
+from datetime import date
 from prefect import task, flow
 
-# To simulate real async work (like I/O), we add a small sleep.
-# In your actual code, these would be your httpx or database calls.
+# This block for Windows is still necessary and correct
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-@task(retries=3, retry_delay_seconds=10)
-async def sync_referencias_task():
-    """Esta tarefa executa a lógica de sync_referencias.py"""
-    print("Iniciando a sincronização de tabelas de referência...")
-    await asyncio.sleep(0.1)
-    print("Tabelas de referência sincronizadas.")
 
-@task(retries=2, retry_delay_seconds=120)
-async def sync_entidades_principais_task(ano_inicio: int = 2023):
-    """Esta tarefa executa a lógica de sync_all.py"""
-    print(f"Iniciando a sincronização de entidades principais desde {ano_inicio}...")
-    await asyncio.sleep(0.2) # Make it slightly longer to see the dependency work
-    print("Entidades principais sincronizadas.")
+# --- Core Daily Flow Tasks ---
 
 @task
-async def score_propositions_task():
-    """Esta tarefa executa a lógica de score_propositions.py"""
-    print("Iniciando o enriquecimento com IA...")
-    await asyncio.sleep(0.1)
-    print("Enriquecimento com IA concluído.")
+async def sync_recent_propositions_task(target_date: date):
+    """
+    Simulates the logic from daily_priority_sync.py to fetch recent propositions.
+    """
+    print(f"🚀 Iniciando a sincronização de proposições para a data: {target_date}...")
+    await asyncio.sleep(2)
+    print(f"✅ Proposições de {target_date} sincronizadas com sucesso.")
+    return True
+
+@task
+async def score_new_propositions_task():
+    """
+    Simulates the AI scoring logic from BacklogProcessor or score_propositions.py.
+    """
+    print("🧠 Iniciando o processo de AI scoring para novas proposições...")
+    await asyncio.sleep(3)
+    print("✅ Novas proposições analisadas e pontuadas.")
+    return True
+
+# --- Other Tasks (unchanged) ---
+
+@task(retries=2, retry_delay_seconds=120, name="sync_all_main_entities")
+async def sync_all_entities_task(start_year: int):
+    print(f"⏳ Iniciando a sincronização histórica completa de entidades principais desde {start_year}...")
+    await asyncio.sleep(5)
+    print(f"✅ Sincronização histórica de entidades concluída.")
+    return True
+
+@task(retries=3, retry_delay_seconds=10, name="sync_reference_tables")
+async def sync_referencias_task():
+    print("📚 Iniciando a sincronização de tabelas de referência...")
+    await asyncio.sleep(1)
+    print("✅ Tabelas de referência sincronizadas.")
+
+@task(retries=1, retry_delay_seconds=300)
+async def process_full_ai_backlog_task():
+    print(" Processing o backlog completo de itens para análise de IA...")
+    await asyncio.sleep(10)
+    print("✅ Backlog de IA processado com sucesso.")
+    return True
 
 
-@flow(name="ETL Câmara Insights V1", log_prints=True)
-async def etl_camara_insights(ano: int = 2024):
-    print("🚀 Iniciando o fluxo de ETL principal...")
+# --- Prefect Flows ---
 
-    # Submit the main task
-    task_entidades_future = sync_entidades_principais_task.submit(ano_inicio=ano)
+@flow(name="Core Daily Sync", log_prints=True)
+async def core_daily_flow(target_date: date = date.today()):
+    """
+    Fluxo leve e rápido para sincronização diária.
+    --- MODIFIED FOR DEBUGGING: Tasks now run sequentially. ---
+    """
+    print("--- Iniciando Core Daily Flow ---")
 
-    # Submit the scoring task with an explicit dependency on the previous task
-    score_propositions_task.submit(
-        wait_for=[task_entidades_future]
-    )
+    # Run tasks one after another instead of submitting them to the background.
+    # This is less efficient but more stable on some Windows configurations.
+    await sync_recent_propositions_task(target_date=target_date)
+    await score_new_propositions_task()
 
-    # Submit the parallel task. It will run concurrently with the others.
+    print("--- Core Daily Flow concluído. ---")
+
+
+@flow(name="Full Historical Sync", log_prints=True)
+async def full_historical_sync_flow(start_year: int = 2023):
+    """
+    Fluxo pesado para realizar a carga histórica completa de dados.
+    """
+    print("--- Iniciando Full Historical Sync Flow ---")
+    
+    # We can keep .submit() here for parallelism, as it's less likely to cause issues
+    # when the tasks are not co-dependent in the same way.
+    sync_all_entities_task.submit(start_year=start_year)
     sync_referencias_task.submit()
 
-    # --- THE FIX ---
-    # We do NOT need to await anything here. The flow will automatically
-    # wait for all of its submitted child tasks to complete.
-    
-    print("✅ Todas as tarefas foram submetidas. O fluxo irá aguardar a conclusão.")
+    print("--- Full Historical Sync Flow submetido. ---")
 
+
+@flow(name="AI Backlog Processing", log_prints=True)
+async def ai_backlog_processing_flow():
+    """
+    Fluxo para processar um grande volume de proposições que ainda não possuem
+    análise de IA.
+    """
+    print("--- Iniciando AI Backlog Processing Flow ---")
+    process_full_ai_backlog_task.submit()
+    print("--- AI Backlog Processing Flow submetido. ---")
+
+
+# --- Main Execution Block ---
 
 if __name__ == "__main__":
-    # This line is all you need. asyncio.run() will not exit until the
-    # etl_camara_insights coroutine and all its child tasks are complete.
-    asyncio.run(etl_camara_insights(ano=2023))
+    """
+    This block is for creating a deployment when the script is run directly.
+    """
+    core_daily_flow.deploy(
+        name="core-daily-deployment-py",
+        work_pool_name="default-agent-pool",
+        tags=["daily-sync", "python-defined"]
+    )
