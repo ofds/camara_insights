@@ -71,7 +71,6 @@ export function DeputadosTable({
                   </TableSortLabel>
                 </TableCell>
               ))}
-              <TableCell>Email</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -98,7 +97,6 @@ export function DeputadosTable({
                   <TableCell>{deputado.ultimoStatus_siglaPartido}</TableCell>
                   <TableCell>{deputado.ultimoStatus_siglaUf}</TableCell>
                   <TableCell>{deputado.ultimoStatus_situacao}</TableCell>
-                  <TableCell>{deputado.ultimoStatus_email}</TableCell>
                 </TableRow>
               ))
             )}
