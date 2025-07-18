@@ -1,4 +1,3 @@
-// src/components/dashboard/WeeklyCalendar.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -20,7 +19,7 @@ interface WeeklyCalendarProps {
   events: ApiEvent[];
 }
 
-const MAX_EVENTS_VISIBLE = 5;
+const MAX_EVENTS_VISIBLE = 4;
 
 const variants = {
   initial: { opacity: 0, x: 50 },
@@ -150,19 +149,21 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                     flexDirection: 'column',
                     border: '1px solid',
                     borderColor: 'divider',
-                    p: 1,
-                    height: 250,
+                    p: 0.5, // Adjusted padding
+                    height: 160, // Adjusted height
                     minWidth: 0,
                   }}
                 >
-                  <Box sx={{ textAlign: 'center', mb: 1 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 500, textTransform: 'capitalize' }}>
+                  <Box sx={{ textAlign: 'center', mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 500, textTransform: 'capitalize' }}>
                       {day.format('ddd')}
                     </Typography>
-                    <Typography variant="h6">{day.format('DD')}</Typography>
+                    <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+                      {day.format('DD')}
+                    </Typography>
                   </Box>
 
-                  <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                  <Box sx={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                     {dayEvents.slice(0, MAX_EVENTS_VISIBLE).map((event) => (
                       <Paper
                         key={event.id}
@@ -170,7 +171,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                         onClick={() => handleDayClick(day)}
                         elevation={0}
                         sx={{
-                          p: 0.5,
+                          p: 0.25, // Adjusted padding
                           bgcolor: 'background.level1',
                           borderLeft: '2px solid',
                           borderColor: 'primary.main',
@@ -178,7 +179,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                           '&:hover': { bgcolor: 'background.default' },
                         }}
                       >
-                        <Typography noWrap sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
+                        <Typography noWrap sx={{ fontSize: '0.6rem', fontWeight: 600 }}>
                           {event.descricaoTipo}
                         </Typography>
                       </Paper>

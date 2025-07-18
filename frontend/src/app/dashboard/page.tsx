@@ -76,13 +76,14 @@ function DashboardPage() {
           </Grid>
           <Grid item xs={12} sx={{ width: '100%' }}>
             <ImpactTabs
-              dailyPropositions={dailyPropositions}
               monthlyPropositions={monthlyPropositions}
+              dailyPropositions={dailyPropositions}
               monthlyDeputies={monthlyDeputies}
               municipalPropositions={municipalPropositions}
               estadualPropositions={estadualPropositions}
             />
           </Grid>
+          
         </Grid>
       )}
     </Box>

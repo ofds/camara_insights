@@ -42,16 +42,16 @@ function TabPanel(props: TabPanelProps) {
 }
 
 interface ImpactTabsProps {
-  dailyPropositions: ApiProposition[];
   monthlyPropositions: ApiProposition[];
+  dailyPropositions: ApiProposition[];
   monthlyDeputies: ApiRankedDeputy[];
   municipalPropositions: ApiProposition[];
   estadualPropositions: ApiProposition[];
 }
 
 export default function ImpactTabs({
-  dailyPropositions,
   monthlyPropositions,
+  dailyPropositions,
   monthlyDeputies,
   municipalPropositions,
   estadualPropositions
@@ -75,19 +75,18 @@ export default function ImpactTabs({
                 variant="scrollable"
                 scrollButtons="auto"
               >
-                <Tab label="Impacto Hoje" id="impact-tab-0" aria-controls="impact-tabpanel-0" />
-                <Tab label="Impacto no Mês" id="impact-tab-1" aria-controls="impact-tabpanel-1" />
+                <Tab label="Impacto no Mês" id="impact-tab-0" aria-controls="impact-tabpanel-0" />
+                <Tab label="Impacto Hoje" id="impact-tab-1" aria-controls="impact-tabpanel-1" />
                 <Tab label="Deputados do Mês" id="impact-tab-2" aria-controls="impact-tabpanel-2" />
                 <Tab label="Impacto Municipal" id="impact-tab-3" aria-controls="impact-tabpanel-3" />
                 <Tab label="Impacto Estadual" id="impact-tab-4" aria-controls="impact-tabpanel-4" />
               </Tabs>
             </Box>
-
             <TabPanel value={value} index={0}>
-              <PropositionsList propositions={dailyPropositions} />
+              <PropositionsList propositions={monthlyPropositions} />
             </TabPanel>
             <TabPanel value={value} index={1}>
-              <PropositionsList propositions={monthlyPropositions} />
+              <PropositionsList propositions={dailyPropositions} />
             </TabPanel>
             <TabPanel value={value} index={2}>
               <DeputiesList deputies={monthlyDeputies} />
