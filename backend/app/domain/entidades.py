@@ -231,3 +231,9 @@ class DeputadoImpactoAvgSchema(BaseModel):
 
 class PropostaActivitySchema(BaseModel):
     activity: List[datetime]
+
+class HealthCheckResponse(BaseModel):
+    api_status: str
+    db_status: str
+    camara_api_status: str
+    openrouter_api_status: str
