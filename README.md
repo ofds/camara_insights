@@ -193,8 +193,3 @@ Acesse a documentação interativa (Swagger UI):
 -----
 
 🚧 Projeto em desenvolvimento contínuo. Contribuições são bem-vindas\!
-
-```
-
-Espero que esta análise detalhada seja útil para o seu projeto! Se precisar de mais alguma coisa, é só pedir.
-```
