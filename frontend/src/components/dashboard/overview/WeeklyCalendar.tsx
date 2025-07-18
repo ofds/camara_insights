@@ -1,3 +1,4 @@
+// frontend/src/components/dashboard/overview/WeeklyCalendar.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -139,6 +140,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
               const key = day.format('YYYY-MM-DD');
               const dayEvents = eventsByDay.get(key) || [];
               const remaining = dayEvents.length - MAX_EVENTS_VISIBLE;
+              const isToday = day.isSame(today, 'day');
 
               return (
                 <Box
@@ -149,16 +151,36 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                     flexDirection: 'column',
                     border: '1px solid',
                     borderColor: 'divider',
-                    p: 0.5, // Adjusted padding
-                    height: 170, // Adjusted height
+                    p: 0.5,
+                    height: 170,
                     minWidth: 0,
+                    position: 'relative', // Needed for the top bar
                   }}
                 >
+                  {isToday && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '4px', // Height of the top bar
+                        backgroundColor: 'primary.main',
+                      }}
+                    />
+                  )}
                   <Box sx={{ textAlign: 'center', mb: 0.5 }}>
                     <Typography variant="caption" sx={{ fontSize: '0.65rem', fontWeight: 500, textTransform: 'capitalize' }}>
                       {day.format('ddd')}
                     </Typography>
-                    <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontSize: '1rem',
+                        fontWeight: isToday ? 'bold' : 'normal', // Bold font for today
+                        color: isToday ? 'primary.main' : 'text.primary', // Primary color for today
+                      }}
+                    >
                       {day.format('DD')}
                     </Typography>
                   </Box>
@@ -171,7 +193,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                         onClick={() => handleDayClick(day)}
                         elevation={0}
                         sx={{
-                          p: 0.25, // Adjusted padding
+                          p: 0.25,
                           bgcolor: 'background.level1',
                           borderLeft: '2px solid',
                           borderColor: 'primary.main',
