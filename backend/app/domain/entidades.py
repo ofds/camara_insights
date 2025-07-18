@@ -207,6 +207,7 @@ class ProposicaoPaginatedResponse(BaseModel):
 
 class DeputadoRankingSchema(DeputadoSchema):
     total_impacto: float
+    total_propostas: int
 
 class ProposicaoPaginatedResponse(BaseModel):
     proposicoes: List[ProposicaoSchema]

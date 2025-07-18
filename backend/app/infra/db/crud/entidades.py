@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import DateTime, Date, desc, asc, func, text
+from sqlalchemy import DateTime, Date, desc, asc, func, text, or_
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
@@ -419,7 +419,8 @@ def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: dat
     # This query will return a list of tuples: (Deputado object, total_impacto)
     ranked_deputados_with_impact = db.query(
         models.Deputado,
-        func.sum(models_ai.ProposicaoAIData.impact_score).label('total_impacto')
+        func.sum(models_ai.ProposicaoAIData.impact_score).label('total_impacto'),
+        func.count(models.Proposicao.id).label('total_propostas')
     ).join(
         models.proposicao_autores, models.Deputado.id == models.proposicao_autores.c.deputado_id
     ).join(
@@ -437,11 +438,12 @@ def get_deputados_ranking_by_impact(db: Session, start_date: date, end_date: dat
     # FastAPI needs a list of objects that match the schema, not tuples.
     # We format the result to match the DeputadoRankingSchema.
     result_list = []
-    for deputado, total_impacto in ranked_deputados_with_impact:
+    for deputado, total_impacto, total_propostas in ranked_deputados_with_impact:
         # Create a dictionary from the deputy object
         deputado_data = {c.name: getattr(deputado, c.name) for c in deputado.__table__.columns}
         # Add the calculated total_impacto
         deputado_data['total_impacto'] = total_impacto or 0
+        deputado_data['total_propostas'] = total_propostas or 0
         result_list.append(deputado_data)
         
     return result_list
@@ -518,3 +520,28 @@ def get_proposal_activity(db: Session, deputado_id: int) -> List[datetime]:
     )
     # The result will be a list of tuples, so you'll want to extract the dates.
     return [item[0] for item in query]
+
+
+def search_proposicoes(db: Session, query: str, skip: int = 0, limit: int = 100):
+    """
+    Busca proposições que correspondam à query em vários campos.
+    """
+    search_query = f"%{query}%"
+    
+    # Query base
+    base_query = db.query(models.Proposicao).filter(
+        or_(
+            models.Proposicao.ementa.ilike(search_query),
+            models.Proposicao.ementaDetalhada.ilike(search_query),
+            models.Proposicao.keywords.ilike(search_query),
+            models.Proposicao.texto.ilike(search_query)
+        )
+    )
+    
+    # Obter a contagem total de resultados
+    total_count = base_query.count()
+    
+    # Aplicar paginação e obter os resultados
+    proposicoes = base_query.offset(skip).limit(limit).all()
+    
+    return proposicoes, total_count

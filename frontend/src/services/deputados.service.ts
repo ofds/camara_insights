@@ -30,6 +30,7 @@ export async function getRankedDeputies(): Promise<ApiRankedDeputy[]> {
       sigla_uf: apiDeputy.ultimoStatus_siglaUf,
       url_foto: apiDeputy.ultimoStatus_urlFoto,
       total_impacto: apiDeputy.total_impacto,
+      total_propostas: apiDeputy.total_propostas || 0, // Ensure total_propostas is defined
     };
   });
 }

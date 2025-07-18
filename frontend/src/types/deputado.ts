@@ -8,6 +8,7 @@ export interface ApiRankedDeputy {
   sigla_uf: string;
   url_foto: string;
   total_impacto: number;
+  total_propostas: number;
 }
 
 // NEW: Simplified type for the main deputies table

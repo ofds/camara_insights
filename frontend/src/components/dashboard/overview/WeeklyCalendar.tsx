@@ -114,7 +114,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                         }}>
                           <Typography sx={{ fontWeight: 600 }}>{event.descricaoTipo}</Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {event.descricao.split('\n')[0]}
+                            {event.descricao}
                           </Typography>
                         </Paper>
                       ))}
@@ -150,7 +150,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                     border: '1px solid',
                     borderColor: 'divider',
                     p: 0.5, // Adjusted padding
-                    height: 160, // Adjusted height
+                    height: 170, // Adjusted height
                     minWidth: 0,
                   }}
                 >
@@ -179,7 +179,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                           '&:hover': { bgcolor: 'background.default' },
                         }}
                       >
-                        <Typography noWrap sx={{ fontSize: '0.6rem', fontWeight: 600 }}>
+                        <Typography noWrap sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                           {event.descricaoTipo}
                         </Typography>
                       </Paper>

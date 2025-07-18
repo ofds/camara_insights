@@ -32,14 +32,22 @@ export default function DeputiesList({ deputies }: DeputiesListProps) {
                 primary={deputy.nome}
                 secondary={`${deputy.sigla_partido} - ${deputy.sigla_uf}`}
               />
-              <Box sx={{ textAlign: 'right' }}>
+              <Box sx={{ textAlign: 'right'}}>
                 <Typography variant="body1" fontWeight="bold">
-                  {deputy.total_impacto.toFixed(2)}
+                  {deputy.total_propostas.toFixed(0)} 
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Participações
+                </Typography>
+              </Box><Box sx={{ textAlign: 'right' ,  ml: 10}}>
+                <Typography variant="body1" fontWeight="bold">
+                  {deputy.total_impacto.toFixed(2)} 
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Impacto Total
                 </Typography>
               </Box>
+              
             </ListItem>
           </ListItemButton>
           {index < deputies.length - 1 && <Divider component="li" />}
