@@ -30,8 +30,7 @@ Um backend modular em Python para coletar, analisar, enriquecer com IA e servir 
 
 ## 🏛️ Sobre o Projeto
 
-O objetivo do **Câmara Insights** é criar uma fonte de dados centralizada e enriquecida sobre a atividade legislativa no Brasil.  
-O sistema se conecta à [API de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/), coleta os dados, os armazena em um banco de dados relacional e utiliza Modelos de Linguagem Grandes (LLMs) para gerar insights, como resumos, tags e uma pontuação de impacto para as proposições.
+O objetivo do **Câmara Insights** é criar uma fonte de dados centralizada e enriquecida sobre a atividade legislativa no Brasil. O sistema se conecta à [API de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/), coleta os dados, os armazena em um banco de dados relacional e utiliza Modelos de Linguagem Grandes (LLMs) para gerar insights, como resumos, tags e uma pontuação de impacto para as proposições.
 
 Todos esses dados são expostos através de uma API RESTful rápida e moderna, construída com FastAPI.
 
@@ -55,15 +54,15 @@ Todos esses dados são expostos através de uma API RESTful rápida e moderna, c
 
 | Área                  | Tecnologia                                   |
 |-----------------------|----------------------------------------------|
-| **Linguagem**         | Python 3.11+                                 |
-| **Framework Web**     | FastAPI                                      |
-| **ORM / Migrations**  | SQLAlchemy 2.0, Alembic                      |
-| **Banco de Dados**    | SQLite (Dev), PostgreSQL (Prod)             |
-| **Cliente HTTP**      | HTTPX                                        |
-| **Agendamento**       | APScheduler                                  |
-| **IA / LLMs**         | OpenRouter (DeepSeek)                        |
-| **Testes**            | Pytest (Fase 6)                              |
-| **Deployment**        | Docker, Docker Compose                       |
+| **Linguagem** | Python 3.11+                                 |
+| **Framework Web** | FastAPI                                      |
+| **ORM / Migrations** | SQLAlchemy 2.0, Alembic                      |
+| **Banco de Dados** | SQLite (Dev), PostgreSQL (Prod)             |
+| **Cliente HTTP** | HTTPX                                        |
+| **Agendamento** | APScheduler                                  |
+| **IA / LLMs** | OpenRouter (DeepSeek)                        |
+| **Testes** | Pytest (Fase 6)                              |
+| **Deployment** | Docker, Docker Compose                       |
 
 ---
 
@@ -80,29 +79,33 @@ Todos esses dados são expostos através de uma API RESTful rápida e moderna, c
 1. **Clone o repositório:**
 
 ```bash
-git clone https://github.com/SEU_USUARIO/camara-insights.git
+git clone [https://github.com/SEU_USUARIO/camara-insights.git](https://github.com/SEU_USUARIO/camara-insights.git)
 cd camara-insights
-```
+````
 
-2. **Crie e ative um ambiente virtual (recomendado):**
+2.  **Crie e ative um ambiente virtual (recomendado):**
+
+<!-- end list -->
 
 ```bash
 # Windows (PowerShell)
 python -m venv venv
-.env\Scripts\Activate.ps1
+. env\Scripts\Activate.ps1
 
 # MacOS/Linux
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. **Instale as dependências:**
+3.  **Instale as dependências:**
+
+<!-- end list -->
 
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Configure suas variáveis de ambiente:**
+4.  **Configure suas variáveis de ambiente:**
 
 Crie um arquivo `.env` na raiz do projeto com o conteúdo:
 
@@ -111,17 +114,17 @@ DATABASE_URL="sqlite:///./camara_insights.db"
 OPENROUTER_API_KEY="sk-or-v1-sua-chave-aqui"
 ```
 
----
+-----
 
 ## ⚙️ Uso
 
-### 1. Inicializar o Banco de Dados
+### 1\. Inicializar o Banco de Dados
 
 ```bash
 python ./scripts/create_database.py
 ```
 
-### 2. Sincronizar Dados da API
+### 2\. Sincronizar Dados da API
 
 ```bash
 # Tabelas de referência (tipos, status, etc.)
@@ -133,7 +136,7 @@ python ./scripts/sync_all.py
 
 > ⚠️ Este processo pode demorar alguns minutos.
 
-### 3. Enriquecer Dados com IA
+### 3\. Enriquecer Dados com IA
 
 ```bash
 python ./scripts/score_propositions.py
@@ -141,7 +144,7 @@ python ./scripts/score_propositions.py
 
 Esse script processa todas as proposições ainda não analisadas e para automaticamente ao final.
 
-### 4. Iniciar o Servidor da API
+### 4\. Iniciar o Servidor da API
 
 ```bash
 uvicorn app.main:app --reload
@@ -149,7 +152,7 @@ uvicorn app.main:app --reload
 
 Servidor disponível em: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
----
+-----
 
 ## 📡 Endpoints da API
 
@@ -159,29 +162,34 @@ Acesse a documentação interativa (Swagger UI):
 
 ### Exemplos:
 
-- `GET /api/v1/deputados`
-  - Filtros: `?sigla_uf=SP`, `?sigla_partido=PT`
+  - `GET /api/v1/deputados`
 
-- `GET /api/v1/proposicoes`
-  - Filtros: `?ano=2024`, `?sigla_tipo=PL`
-  - Ordenação: `?sort=ano:desc`
+      - Filtros: `?sigla_uf=SP`, `?sigla_partido=PT`
 
-- `GET /api/v1/partidos`
-- `GET /api/v1/orgaos`
-- `GET /api/v1/eventos`
-- `GET /api/v1/votacoes`
+  - `GET /api/v1/proposicoes`
+
+      - Filtros: `?ano=2024`, `?sigla_tipo=PL`
+      - Ordenação: `?sort=ano:desc`
+
+  - `GET /api/v1/partidos`
+
+  - `GET /api/v1/orgaos`
+
+  - `GET /api/v1/eventos`
+
+  - `GET /api/v1/votacoes`
 
 > Todos os endpoints suportam paginação: `?skip=0&limit=10`
 
----
+-----
 
 ## 🔮 Próximos Passos
 
-- **Fase 6:** Testes automatizados com Pytest + formatadores de código.
-- **Fase 8:** Dashboard com Streamlit ou frontend React.
-- **Melhoria dos Filtros:** Filtros por tema, autor, impacto, etc.
-- **Endpoints Detalhados:** Ex: `GET /deputados/{id}` com dados completos relacionados.
+  - **Fase 6:** Testes automatizados com Pytest + formatadores de código.
+  - **Fase 8:** Dashboard com Streamlit ou frontend React.
+  - **Melhoria dos Filtros:** Filtros por tema, autor, impacto, etc.
+  - **Endpoints Detalhados:** Ex: `GET /deputados/{id}` com dados completos relacionados.
 
----
+-----
 
-🚧 Projeto em desenvolvimento contínuo. Contribuições são bem-vindas!
+🚧 Projeto em desenvolvimento contínuo. Contribuições são bem-vindas\!
