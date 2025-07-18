@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/api/v1/partidos.py
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session

@@ -1,3 +1,5 @@
+import logging
+
 # app/infra/db/crud/ai_data.py
 from sqlalchemy.orm import Session
 from typing import List

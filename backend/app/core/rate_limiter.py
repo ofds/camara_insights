@@ -1,3 +1,5 @@
+import logging
+
 # app/core/rate_limiter.py
 import asyncio
 import time
@@ -28,7 +30,7 @@ class RateLimiter:
             if elapsed_time < self.time_window:
                 # Se a janela de tempo ainda não passou, calcula o tempo a esperar
                 time_to_wait = self.time_window - elapsed_time
-                print(f"--- [RATE LIMITER] Limite atingido. Aguardando {time_to_wait:.2f} segundos... ---")
+                logging.info(f"--- [RATE LIMITER] Limite atingido. Aguardando {time_to_wait:.2f} segundos... ---")
                 await asyncio.sleep(time_to_wait)
             
             # Remove o timestamp da requisição mais antiga da fila

@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/infra/camara_api.py
 import httpx
 import asyncio
@@ -21,17 +23,17 @@ class CamaraAPI:
                     # Se o erro for 429, espera e tenta novamente
                     if e.response.status_code == 429:
                         wait_time = backoff_factor * (attempt + 1)
-                        print(f"Erro 429 - Too Many Requests. Aguardando {wait_time} segundos para tentar novamente...")
+                        logging.info(f"Erro 429 - Too Many Requests. Aguardando {wait_time} segundos para tentar novamente...")
                         await asyncio.sleep(wait_time)
                         continue # Próxima tentativa
                     else:
-                        print(f"HTTP error occurred: {e}")
+                        logging.error(f"HTTP error occurred: {e}")
                         return None
                 except httpx.RequestError as e:
-                    print(f"An error occurred while requesting {e.request.url!r}.")
+                    logging.error(f"An error occurred while requesting {e.request.url!r}.")
                     return None
         
-        print(f"Falha ao obter dados de {url} após {retries} tentativas.")
+        logging.error(f"Falha ao obter dados de {url} após {retries} tentativas.")
         return None
 
 

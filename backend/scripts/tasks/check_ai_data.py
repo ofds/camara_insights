@@ -2,7 +2,7 @@
 Refactored check_ai_data.py using SOLID principles.
 This script now separates data access from presentation logic.
 """
-
+import logging
 import sys
 import os
 
@@ -39,10 +39,10 @@ def check_ai_data(limit: int = 10, format_type: str = "console") -> str:
     finally:
         session.close()
 
-
 def main():
     """Main entry point for check_ai_data."""
-    print("--- Checking AI Analysis Results ---")
+    logging.info("--- Checking AI Analysis Results ---")
+    
     
     # Default parameters
     limit = 10
@@ -57,10 +57,10 @@ def main():
     args = parser.parse_args()
     limit = args.limit
     format_type = args.format
-    
     # Get and display results
     output = check_ai_data(limit, format_type)
-    print(output)
+    logging.info(output)
+ 
 
 
 if __name__ == "__main__":

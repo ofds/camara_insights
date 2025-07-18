@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/scripts/sync_referencias.py
 import asyncio
 import sys
@@ -58,6 +60,6 @@ async def sync_all_referencias():
 
         
 if __name__ == "__main__":
-    print("Iniciando a sincronização de todas as tabelas de referência...")
+    logging.info("Iniciando a sincronização de todas as tabelas de referência...")
     asyncio.run(sync_all_referencias())
-    print("Sincronização concluída.")
+    logging.info("Sincronização concluída.")

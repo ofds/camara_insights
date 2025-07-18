@@ -1,3 +1,5 @@
+import logging
+
 # app/main.py
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -10,11 +12,11 @@ from app.api.v1 import deputados, proposicoes, partidos, orgaos, eventos, votaco
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Código a ser executado na inicialização
-    print("--- Aplicação iniciando ---")
+    logging.info("--- Aplicação iniciando ---")
     start_scheduler()
     yield
     # Código a ser executado no encerramento (não faremos nada aqui por enquanto)
-    print("--- Aplicação encerrando ---")
+    logging.info("--- Aplicação encerrando ---")
 
 
 app = FastAPI(

@@ -1,3 +1,5 @@
+import logging
+
 # app/core/settings.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional 

@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session, joinedload, aliased
 from sqlalchemy import DateTime, Date, desc, asc, func, text, or_
 from app.infra.db.models import entidades as models

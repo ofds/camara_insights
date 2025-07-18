@@ -1,3 +1,5 @@
+import logging
+
 # app/services/scoring_service.py
 import asyncio
 from sqlalchemy.orm import Session
@@ -34,7 +36,7 @@ async def analyze_and_score_propositions(db: Session, propositions: list):
     Coordena a análise de um lote de proposições, calcula o score e salva no banco.
     """
     if not propositions:
-        print("Nenhuma proposição nova para analisar.")
+        logging.info("Nenhuma proposição nova para analisar.")
         return
 
     # Cria tarefas assíncronas para análise no LLM
@@ -47,12 +49,12 @@ async def analyze_and_score_propositions(db: Session, propositions: list):
 
     for prop, analysis in zip(propositions, analysis_results):
         if not analysis:
-            print(f"Análise falhou ou foi pulada para a proposição ID: {prop.id}")
+            logging.warning(f"Análise falhou ou foi pulada para a proposição ID: {prop.id}")
             continue
 
         # Verifica se o ID retornado pela LLM bate com o ID enviado
         if int(analysis.get("proposicao_id", 0)) != prop.id:
-            print(f"ID da proposição na resposta do LLM ({analysis.get('proposicao_id')}) não corresponde ao esperado ({prop.id}). Pulando.")
+            logging.warning(f"ID da proposição na resposta do LLM ({analysis.get('proposicao_id')}) não corresponde ao esperado ({prop.id}). Pulando.")
             continue
 
         # Calcula o score final
@@ -72,4 +74,4 @@ async def analyze_and_score_propositions(db: Session, propositions: list):
         db.add(ai_data_obj)
     
     db.commit()
-    print(f"{len(propositions)} proposições processadas e salvas.")
+    logging.info(f"{len(propositions)} proposições processadas e salvas.")

@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/infra/db/models/entidades.py
 from sqlalchemy import (Column, Integer, String, Text, Date, DateTime,
                         ForeignKey, JSON, Float, Table)

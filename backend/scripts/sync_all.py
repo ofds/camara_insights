@@ -2,10 +2,22 @@
 import asyncio
 import sys
 import os
+import logging
 from datetime import datetime
 from typing import List, Dict, Any, Type, Tuple
 from dateutil.parser import parse
 from collections.abc import MutableMapping
+
+# --- Configuração do Logging ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler("sync_all.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -45,28 +57,31 @@ async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any]
     all_data: List[Dict[str, Any]] = []
     page = 1
     
-    # Imprime os parâmetros usados para a busca (sem a página)
     param_str = '&'.join([f"{k}={v}" for k, v in params.items() if k != 'pagina'])
-    print(f"Buscando: {endpoint}?{param_str}...")
+    logging.info(f"Buscando: {endpoint}?{param_str}...")
 
     while True:
         current_params = params.copy()
         current_params['pagina'] = page
         
-        print(f"  - Página: {page}")
-        api_response = await camara_api_client.get(endpoint=endpoint, params=current_params)
-        
-        if api_response and 'dados' in api_response and api_response['dados']:
-            all_data.extend(api_response['dados'])
+        logging.debug(f" - Página: {page}")
+        try:
+            api_response = await camara_api_client.get(endpoint=endpoint, params=current_params)
             
-            next_link = next((link for link in api_response.get('links', []) if link['rel'] == 'next'), None)
-            if not next_link:
-                print(f"Fim da paginação para {endpoint}.")
+            if api_response and 'dados' in api_response and api_response['dados']:
+                all_data.extend(api_response['dados'])
+                
+                next_link = next((link for link in api_response.get('links', []) if link['rel'] == 'next'), None)
+                if not next_link:
+                    logging.info(f"Fim da paginação para {endpoint}.")
+                    break
+                
+                page += 1
+            else:
+                logging.warning(f"Não foram encontrados mais dados ou houve erro para o endpoint {endpoint} na página {page}.")
                 break
-            
-            page += 1
-        else:
-            print(f"Não foram encontrados mais dados ou houve erro para o endpoint {endpoint} na página {page}.")
+        except Exception as e:
+            logging.error(f"Erro ao buscar o endpoint {endpoint} na página {page}: {e}")
             break
             
     return all_data
@@ -74,22 +89,26 @@ async def fetch_and_process_paginated_data(endpoint: str, params: Dict[str, Any]
 async def fetch_with_semaphore(semaphore: asyncio.Semaphore, endpoint: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
     """Wrapper para chamadas de API com controle de concorrência."""
     async with semaphore:
-        return await camara_api_client.get(endpoint=endpoint, params=params)
+        try:
+            return await camara_api_client.get(endpoint=endpoint, params=params)
+        except Exception as e:
+            logging.error(f"Erro ao buscar endpoint com semáforo {endpoint}: {e}")
+            return {}
 
 async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}):
     """
     Função genérica e robusta para sincronizar entidades (lista -> detalhes).
     """
     param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
-    print(f"\n--- Iniciando sincronização para {model.__tablename__} com filtros: [{param_str}] ---")
+    logging.info(f"\n--- Iniciando sincronização para {model.__tablename__} com filtros: [{param_str}] ---")
     
     summary_data = await fetch_and_process_paginated_data(endpoint, params)
     
     if not summary_data:
-        print(f"Nenhum item encontrado para {model.__tablename__} com os filtros aplicados.")
+        logging.info(f"Nenhum item encontrado para {model.__tablename__} com os filtros aplicados.")
         return
 
-    print(f"{len(summary_data)} itens descobertos. Buscando detalhes...")
+    logging.info(f"{len(summary_data)} itens descobertos. Buscando detalhes...")
     
     model_columns = {c.name: c.type for c in model.__table__.columns}
     pk_name = model.__mapper__.primary_key[0].name
@@ -120,7 +139,8 @@ async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: s
                     try:
                         parsed_datetime = parse(value)
                         filtered_data[key] = parsed_datetime.date() if isinstance(column_type, Date) else parsed_datetime
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError) as e:
+                        logging.warning(f"Erro ao converter data '{value}' para o campo '{key}': {e}")
                         filtered_data[key] = None
             
             if model == models.Votacao and flattened_data.get('proposicao_id'):
@@ -129,20 +149,24 @@ async def sync_entidade_com_detalhes(db: Session, model: Type[Base], endpoint: s
             all_data_to_upsert.append(filtered_data)
         
         if all_data_to_upsert:
-            stmt = insert(model).values(all_data_to_upsert)
-            update_columns = {
-                c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name
-            }
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[pk_name],
-                set_=update_columns
-            )
-            db.execute(stmt)
-            db.commit()
+            try:
+                stmt = insert(model).values(all_data_to_upsert)
+                update_columns = {
+                    c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name
+                }
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[pk_name],
+                    set_=update_columns
+                )
+                db.execute(stmt)
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                logging.error(f"Erro durante o upsert para {model.__tablename__}: {e}")
             
-        print(f"Lote de detalhes {i//BATCH_SIZE + 1}/{len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
+        logging.info(f"Lote de detalhes {i//BATCH_SIZE + 1}/{len(all_tasks)//BATCH_SIZE + 1} para {model.__tablename__} processado.")
             
-    print(f"Sincronização com detalhes para {model.__tablename__} concluída.")
+    logging.info(f"Sincronização com detalhes para {model.__tablename__} concluída.")
 
 
 async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model: Type[Base], endpoint_template: str, child_fk_name: str, params: Dict[str, Any] = {}, paginated: bool = True):
@@ -150,7 +174,7 @@ async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model
     Sincroniza uma entidade 'filha' de forma otimizada.
     """
     param_str = ', '.join([f"{k}: {v}" for k, v in params.items()])
-    print(f"\n--- Sincronizando entidade filha: {child_model.__tablename__} com filtros: [{param_str}] ---")
+    logging.info(f"\n--- Sincronizando entidade filha: {child_model.__tablename__} com filtros: [{param_str}] ---")
     parent_ids: List[Tuple[Any]] = db.query(parent_model.id).all()
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     
@@ -175,19 +199,23 @@ async def sync_child_entidade(db: Session, parent_model: Type[Base], child_model
                 child_data[child_fk_name] = current_parent_id
                 child_data.pop('id', None)
                 all_child_data_to_insert.append(child_data)
-        print(f"Lote de pais {i//BATCH_SIZE + 1}/{len(parent_ids)//BATCH_SIZE+1 if parent_ids else 1} para {child_model.__tablename__} processado.")
+        logging.info(f"Lote de pais {i//BATCH_SIZE + 1}/{len(parent_ids)//BATCH_SIZE+1 if parent_ids else 1} para {child_model.__tablename__} processado.")
 
     if all_child_data_to_insert:
-        print(f"Iniciando inserção em massa de {len(all_child_data_to_insert)} registros para {child_model.__tablename__}...")
-        db.bulk_insert_mappings(child_model, all_child_data_to_insert)
-        db.commit()
-    print(f"Sincronização de {child_model.__tablename__} concluída.")
+        logging.info(f"Iniciando inserção em massa de {len(all_child_data_to_insert)} registros para {child_model.__tablename__}...")
+        try:
+            db.bulk_insert_mappings(child_model, all_child_data_to_insert)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logging.error(f"Erro durante a inserção em massa para {child_model.__tablename__}: {e}")
+    logging.info(f"Sincronização de {child_model.__tablename__} concluída.")
 
 async def sync_proposicao_autores(db: Session):
     """
     Sincroniza a tabela de associação (M2M) entre proposições e seus autores.
     """
-    print("\n--- Iniciando sincronização de autores de proposições (M2M) ---")
+    logging.info("\n--- Iniciando sincronização de autores de proposições (M2M) ---")
 
     proposicoes_uris: List[Tuple[int, str]] = db.query(
         models.Proposicao.id,
@@ -195,10 +223,10 @@ async def sync_proposicao_autores(db: Session):
     ).filter(models.Proposicao.uriAutores.isnot(None)).all()
 
     if not proposicoes_uris:
-        print("Nenhuma proposição com autores para sincronizar.")
+        logging.info("Nenhuma proposição com autores para sincronizar.")
         return
 
-    print(f"{len(proposicoes_uris)} proposições com URIs de autores encontradas.")
+    logging.info(f"{len(proposicoes_uris)} proposições com URIs de autores encontradas.")
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     all_autores_to_insert = []
 
@@ -222,17 +250,22 @@ async def sync_proposicao_autores(db: Session):
                             "proposicao_id": proposicao_id,
                             "deputado_id": deputado_id
                         })
-                    except (ValueError, IndexError):
+                    except (ValueError, IndexError) as e:
+                        logging.warning(f"Não foi possível extrair o ID do deputado da URI '{autor_uri}': {e}")
                         pass
-        print(f"Lote {i//BATCH_SIZE + 1}/{len(proposicoes_uris)//BATCH_SIZE+1 if proposicoes_uris else 1} de autores de proposições processado.")
+        logging.info(f"Lote {i//BATCH_SIZE + 1}/{len(proposicoes_uris)//BATCH_SIZE+1 if proposicoes_uris else 1} de autores de proposições processado.")
 
     if all_autores_to_insert:
-        print(f"Inserindo {len(all_autores_to_insert)} links autor-proposição...")
-        stmt = insert(models.proposicao_autores).values(all_autores_to_insert)
-        stmt = stmt.on_conflict_do_nothing(index_elements=['proposicao_id', 'deputado_id'])
-        db.execute(stmt)
-        db.commit()
-    print("Sincronização de autores de proposições concluída.")
+        logging.info(f"Inserindo {len(all_autores_to_insert)} links autor-proposição...")
+        try:
+            stmt = insert(models.proposicao_autores).values(all_autores_to_insert)
+            stmt = stmt.on_conflict_do_nothing(index_elements=['proposicao_id', 'deputado_id'])
+            db.execute(stmt)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logging.error(f"Erro ao inserir links autor-proposição: {e}")
+    logging.info("Sincronização de autores de proposições concluída.")
 
 
 async def main():
@@ -241,7 +274,6 @@ async def main():
     """
     db = SessionLocal()
     try:
-        # Data de início da legislatura atual para filtrar os dados
         start_date = "2025-07-01" 
         current_year = str(datetime.now().year)
         
@@ -249,8 +281,7 @@ async def main():
         date_params = {**base_params, 'dataInicio': start_date, 'ordem': 'ASC', 'ordenarPor': 'id'}
         proposicao_params = {**base_params, 'dataApresentacaoInicio': start_date, 'ordem': 'ASC', 'ordenarPor': 'id'}
 
-
-        print("--- ETAPA 1: SINCRONIZANDO ENTIDADES PRINCIPAIS ---")
+        logging.info("--- ETAPA 1: SINCRONIZANDO ENTIDADES PRINCIPAIS ---")
         await sync_entidade_com_detalhes(db, models.Deputado, "/deputados", params=base_params)
         await sync_entidade_com_detalhes(db, models.Partido, "/partidos", params=base_params)
         await sync_entidade_com_detalhes(db, models.Orgao, "/orgaos", params=base_params)
@@ -258,28 +289,36 @@ async def main():
         await sync_entidade_com_detalhes(db, models.Evento, "/eventos", params=date_params)
         await sync_entidade_com_detalhes(db, models.Votacao, "/votacoes", params=date_params)
         
-        print("\n--- ETAPA 2: SINCRONIZANDO FRENTES, BLOCOS E GRUPOS ---")
+        logging.info("\n--- ETAPA 2: SINCRONIZANDO FRENTES, BLOCOS E GRUPOS ---")
         for model, endpoint in [(models.Frente, "/frentes"), (models.Bloco, "/blocos"), (models.Grupo, "/grupos")]:
             data = await fetch_and_process_paginated_data(endpoint, base_params)
             if data:
-                pk_name = model.__mapper__.primary_key[0].name
-                stmt = insert(model).values(data)
-                update_cols = {c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name}
-                stmt = stmt.on_conflict_do_update(index_elements=[pk_name], set_=update_cols)
-                db.execute(stmt)
+                try:
+                    pk_name = model.__mapper__.primary_key[0].name
+                    stmt = insert(model).values(data)
+                    update_cols = {c.name: getattr(stmt.excluded, c.name) for c in model.__table__.columns if c.name != pk_name}
+                    stmt = stmt.on_conflict_do_update(index_elements=[pk_name], set_=update_cols)
+                    db.execute(stmt)
+                except Exception as e:
+                    db.rollback()
+                    logging.error(f"Erro ao sincronizar {model.__tablename__}: {e}")
         db.commit()
-        print("Frentes, Blocos e Grupos sincronizados.")
+        logging.info("Frentes, Blocos e Grupos sincronizados.")
 
-        print("\n--- ETAPA 3: LIMPANDO DADOS DE RELACIONAMENTOS ---")
-        db.execute(models.proposicao_autores.delete())
-        db.execute(models.Despesa.__table__.delete())
-        db.execute(models.Discurso.__table__.delete())
-        db.execute(models.Tramitacao.__table__.delete())
-        db.execute(models.Voto.__table__.delete())
-        db.commit()
-        print("Limpeza concluída.")
+        logging.info("\n--- ETAPA 3: LIMPANDO DADOS DE RELACIONAMENTOS ---")
+        try:
+            db.execute(models.proposicao_autores.delete())
+            db.execute(models.Despesa.__table__.delete())
+            db.execute(models.Discurso.__table__.delete())
+            db.execute(models.Tramitacao.__table__.delete())
+            db.execute(models.Voto.__table__.delete())
+            db.commit()
+            logging.info("Limpeza concluída.")
+        except Exception as e:
+            db.rollback()
+            logging.error(f"Erro ao limpar dados de relacionamentos: {e}")
 
-        print("\n--- ETAPA 4: SINCRONIZANDO RELACIONAMENTOS E ENTIDADES FILHAS ---")
+        logging.info("\n--- ETAPA 4: SINCRONIZANDO RELACIONAMENTOS E ENTIDADES FILHAS ---")
         despesa_params = {**base_params, 'ano': current_year}
         discurso_params = {**base_params, 'dataInicio': start_date}
         
@@ -289,12 +328,14 @@ async def main():
         await sync_child_entidade(db, models.Proposicao, models.Tramitacao, "/proposicoes/{id}/tramitacoes", "proposicao_id", paginated=False)
         await sync_child_entidade(db, models.Votacao, models.Voto, "/votacoes/{id}/votos", "votacao_id", paginated=False)
 
+    except Exception as e:
+        logging.critical(f"Ocorreu um erro fatal na sincronização principal: {e}", exc_info=True)
     finally:
         # A linha abaixo foi removida para corrigir o erro 'AttributeError'
         # await camara_api_client.close()
         db.close()
 
 if __name__ == "__main__":
-    print("--- INICIANDO SINCRONIZAÇÃO GERAL (OTIMIZADA) ---")
+    logging.info("--- INICIANDO SINCRONIZAÇÃO GERAL (OTIMIZADA) ---")
     asyncio.run(main())
-    print("\n--- SINCRONIZAÇÃO GERAL CONCLUÍDA ---")
+    logging.info("\n--- SINCRONIZAÇÃO GERAL CONCLUÍDA ---")

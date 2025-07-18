@@ -2,7 +2,7 @@
 Refactored score_propositions.py using SOLID principles.
 This script now uses the BacklogProcessor class for handling AI scoring.
 """
-
+import logging
 import asyncio
 import sys
 import os
@@ -70,11 +70,11 @@ def main():
     
     if args.ids:
         # Process specific propositions
-        print(f"Processing specific propositions: {args.ids}")
+        logging.info(f"Processing specific propositions: {args.ids}")
         asyncio.run(process_specific_propositions(args.ids))
     else:
         # Process backlog
-        print("Processing entire backlog...")
+        logging.info("Processing entire backlog...")
         asyncio.run(process_backlog(args.batch_size, args.rate_limit))
 
 

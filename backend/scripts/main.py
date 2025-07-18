@@ -1,3 +1,5 @@
+import logging
+
 """
 Main CLI interface for the refactored Câmara Insights project.
 This provides a unified command-line interface for all tasks.
@@ -78,7 +80,7 @@ def main():
         asyncio.run(sync_references())
     elif args.command == 'check-ai':
         result = check_ai_data(args.limit, args.format)
-        print(result)
+        logging.info(result)
     elif args.command == 'score':
         if args.ids:
             asyncio.run(process_specific_propositions(args.ids))

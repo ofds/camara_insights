@@ -1,3 +1,5 @@
+import logging
+
 # app/infra/db/models/ai_data.py
 from sqlalchemy import (Column, Integer, String, Text, Date, DateTime,
                         ForeignKey, JSON, Float)

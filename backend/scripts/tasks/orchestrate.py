@@ -1,3 +1,5 @@
+import logging
+
 """
 Refactored orchestrate.py using SOLID principles.
 This script now uses the data-driven orchestrator service.
@@ -83,9 +85,9 @@ async def main():
     # Build and run the flow
     flow = orchestrator.build_flow("ETL Câmara Insights")
     
-    print("--- Starting ETL flow ---")
+    logging.info("--- Starting ETL flow ---")
     await flow()
-    print("--- ETL flow completed ---")
+    logging.info("--- ETL flow completed ---")
 
 
 if __name__ == "__main__":

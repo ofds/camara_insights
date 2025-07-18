@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/api/v1/eventos.py
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session

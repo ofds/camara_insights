@@ -1,3 +1,5 @@
+import logging
+
 """
 Backlog processor for handling AI scoring of propositions.
 This class encapsulates the backlog processing logic following SOLID principles.
@@ -42,7 +44,7 @@ class BacklogProcessor:
         # Create a worker function for each proposition
         async def task_worker(prop):
             await self.rate_limiter.acquire()
-            print(f"Analyzing proposition ID: {prop.id}...")
+            logging.info(f"Analyzing proposition ID: {prop.id}...")
             
             # Create a new session for each worker to avoid session conflicts
             session = self.session_factory()
@@ -67,16 +69,16 @@ class BacklogProcessor:
         total_processed = 0
         batch_number = 1
         
-        print("--- Starting backlog processing ---")
-        print("This will run continuously until all propositions are analyzed.")
-        print("Press CTRL+C to stop at any time.")
+        logging.info("--- Starting backlog processing ---")
+        logging.info("This will run continuously until all propositions are analyzed.")
+        logging.info("Press CTRL+C to stop at any time.")
         
         try:
             while True:
                 # Create a new session for each batch
                 session = self.session_factory()
                 try:
-                    print(f"\n--- Batch #{batch_number}: Fetching up to {self.batch_size} propositions... ---")
+                    logging.info(f"\n--- Batch #{batch_number}: Fetching up to {self.batch_size} propositions... ---")
                     
                     # Get unscored propositions
                     from app.infra.db.models.entidades import Proposicao
@@ -84,28 +86,28 @@ class BacklogProcessor:
                     propositions_to_score = repository.get_unscored(self.batch_size)
                     
                     if not propositions_to_score:
-                        print("\nCongratulations! All propositions in the backlog have been analyzed.")
+                        logging.info("\nCongratulations! All propositions in the backlog have been analyzed.")
                         break
                     
-                    print(f"Found {len(propositions_to_score)} propositions. Starting concurrent processing...")
+                    logging.info(f"Found {len(propositions_to_score)} propositions. Starting concurrent processing...")
                     
                     # Process this batch
                     processed = await self.process_batch(propositions_to_score)
                     total_processed += processed
                     
-                    print(f"--- Batch #{batch_number} completed. {processed} propositions processed. ---")
+                    logging.info(f"--- Batch #{batch_number} completed. {processed} propositions processed. ---")
                     batch_number += 1
                     
                 except Exception as e:
-                    print(f"Unexpected error occurred: {e}. Waiting 1 minute before continuing.")
+                    logging.warning(f"Unexpected error occurred: {e}. Waiting 1 minute before continuing.")
                     await asyncio.sleep(60)
                 finally:
                     session.close()
-        
         except KeyboardInterrupt:
-            print("\nProcessing interrupted by user.")
+            logging.info("\nProcessing interrupted by user.")
         
-        print(f"--- Processing completed. Total propositions processed: {total_processed} ---")
+        
+        logging.info(f"--- Processing completed. Total propositions processed: {total_processed} ---")
         return total_processed
     
     async def process_specific_propositions(self, proposition_ids: List[int]) -> int:
@@ -125,12 +127,12 @@ class BacklogProcessor:
             propositions = [p for p in propositions if p is not None]
             
             if not propositions:
-                print("No valid propositions found for the given IDs.")
+                logging.info("No valid propositions found for the given IDs.")
                 return 0
             
-            print(f"Processing {len(propositions)} specific propositions...")
+            logging.info(f"Processing {len(propositions)} specific propositions...")
             processed = await self.process_batch(propositions)
-            print(f"Successfully processed {processed} propositions.")
+            logging.info(f"Successfully processed {processed} propositions.")
             return processed
             
         finally:

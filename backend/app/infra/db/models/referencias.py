@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/infra/db/models/referencias.py
 from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base

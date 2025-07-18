@@ -1,3 +1,5 @@
+import logging
+
 # backend/app/domain/entidades.py
 
 from pydantic import BaseModel, field_validator

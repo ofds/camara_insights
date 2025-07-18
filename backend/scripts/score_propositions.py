@@ -1,3 +1,4 @@
+import logging
 # scripts/score_propositions.py
 import asyncio
 import sys
@@ -23,14 +24,14 @@ async def process_backlog():
         db = SessionLocal()
         try:
             # Tenta buscar um lote completo de 10 proposições
-            print(f"\n--- Lote #{batch_number}: Buscando até 10 proposições... ---")
+            logging.info(f"\n--- Lote #{batch_number}: Buscando até 10 proposições... ---")
             propositions_to_score = get_unscored_propositions(db, limit=10)
 
             if not propositions_to_score:
-                print("\nParabéns! Todo o backlog de proposições foi analisado.")
+                logging.info("\nParabéns! Todo o backlog de proposições foi analisado.")
                 break
 
-            print(f"Encontradas {len(propositions_to_score)} proposições. Iniciando processamento concorrente...")
+            logging.info(f"Encontradas {len(propositions_to_score)} proposições. Iniciando processamento concorrente...")
 
             # --- Lógica de Processamento em Lote ---
             
@@ -38,7 +39,7 @@ async def process_backlog():
             async def task_worker(prop):
                 # Cada worker primeiro adquire permissão do limiter
                 await limiter.acquire()
-                print(f"Analisando proposição ID: {prop.id}...")
+                logging.info(f"Analisando proposição ID: {prop.id}...")
                 # Passamos uma lista com um único item para a função de análise
                 await analyze_and_score_propositions(db, [prop])
 
@@ -48,18 +49,18 @@ async def process_backlog():
             # Executamos todas as tarefas do lote concorrentemente
             await asyncio.gather(*tasks)
             
-            print(f"--- Lote #{batch_number} finalizado. ---")
+            logging.info(f"--- Lote #{batch_number} finalizado. ---")
             batch_number += 1
 
         except Exception as e:
-            print(f"Ocorreu um erro inesperado: {e}. Aguardando 1 minuto antes de continuar.")
+            logging.warning(f"Ocorreu um erro inesperado: {e}. Aguardando 1 minuto antes de continuar.")
             await asyncio.sleep(60)
         finally:
             db.close()
 
 if __name__ == "__main__":
-    print("--- INICIANDO WORKER DE ANÁLISE DE BACKLOG (COM LOTES OTIMIZADOS) ---")
-    print("Este script irá rodar continuamente até que todas as proposições sejam analisadas.")
-    print("Pressione CTRL+C para parar a qualquer momento.")
+    logging.info("--- INICIANDO WORKER DE ANÁLISE DE BACKLOG (COM LOTES OTIMIZADOS) ---")
+    logging.info("Este script irá rodar continuamente até que todas as proposições sejam analisadas.")
+    logging.info("Pressione CTRL+C para parar a qualquer momento.")
     asyncio.run(process_backlog())
-    print("--- WORKER FINALIZADO ---")
+    logging.info("--- WORKER FINALIZADO ---")

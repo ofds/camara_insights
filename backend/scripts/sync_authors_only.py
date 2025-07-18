@@ -1,3 +1,5 @@
+import logging
+
 # /backend/app/scripts/sync_authors_only.py
 import asyncio
 import sys
@@ -25,7 +27,7 @@ DB_INSERT_BATCH_SIZE = 100
 async def fetch_with_semaphore(semaphore: asyncio.Semaphore, endpoint: str, params: Dict[str, Any] = {}) -> Dict[str, Any]:
     """Wrapper para chamadas de API com controle de concorrência."""
     async with semaphore:
-        print(f"Buscando dados de autores em: {endpoint}")
+        logging.info(f"Buscando dados de autores em: {endpoint}")
         return await camara_api_client.get(endpoint=endpoint, params=params)
 
 async def sync_proposicao_autores(db: Session):
@@ -33,13 +35,13 @@ async def sync_proposicao_autores(db: Session):
     Sincroniza a tabela de associação (M2M) entre proposições e seus autores,
     inserindo os dados em lotes de 100.
     """
-    print("--- Iniciando sincronização de autores de proposições (M2M) ---")
+    logging.info("--- Iniciando sincronização de autores de proposições (M2M) ---")
 
     # 1. Limpa a tabela de associação para evitar dados obsoletos
-    print("Limpando a tabela proposicao_autores...")
+    logging.info("Limpando a tabela proposicao_autores...")
     db.execute(models.proposicao_autores.delete())
     db.commit()
-    print("Tabela limpa.")
+    logging.info("Tabela limpa.")
 
     # 2. Busca todas as proposições com seu uriAutores para processar
     proposicoes_uris: List[Tuple[int, str]] = db.query(
@@ -48,10 +50,10 @@ async def sync_proposicao_autores(db: Session):
     ).filter(models.Proposicao.uriAutores.isnot(None)).all()
 
     if not proposicoes_uris:
-        print("Nenhuma proposição com autores para sincronizar.")
+        logging.info("Nenhuma proposição com autores para sincronizar.")
         return
 
-    print(f"{len(proposicoes_uris)} proposições com URIs de autores encontradas.")
+    logging.info(f"{len(proposicoes_uris)} proposições com URIs de autores encontradas.")
     semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
     
     # Lista que acumulará os registros para o lote de inserção
@@ -89,24 +91,24 @@ async def sync_proposicao_autores(db: Session):
         # ---> NOVA LÓGICA DE INSERÇÃO EM LOTES <---
         # Verifica se o lote atingiu o tamanho definido para inserção
         if len(autores_para_inserir) >= DB_INSERT_BATCH_SIZE:
-            print(f"Atingido o limite de {DB_INSERT_BATCH_SIZE}. Inserindo {len(autores_para_inserir)} registros no banco de dados...")
+            logging.info(f"Atingido o limite de {DB_INSERT_BATCH_SIZE}. Inserindo {len(autores_para_inserir)} registros no banco de dados...")
             stmt = insert(models.proposicao_autores).values(autores_para_inserir)
             stmt = stmt.on_conflict_do_nothing(index_elements=['proposicao_id', 'deputado_id'])
             db.execute(stmt)
             db.commit()
             autores_para_inserir = [] # Limpa a lista para o próximo lote
 
-        print(f"Lote de busca {i//API_FETCH_BATCH_SIZE + 1} de {len(proposicoes_uris)//API_FETCH_BATCH_SIZE + 1} processado.")
+        logging.info(f"Lote de busca {i//API_FETCH_BATCH_SIZE + 1} de {len(proposicoes_uris)//API_FETCH_BATCH_SIZE + 1} processado.")
 
     # 4. Insere quaisquer registros restantes que não formaram um lote completo
     if autores_para_inserir:
-        print(f"Inserindo lote final de {len(autores_para_inserir)} autores restantes...")
+        logging.info(f"Inserindo lote final de {len(autores_para_inserir)} autores restantes...")
         stmt = insert(models.proposicao_autores).values(autores_para_inserir)
         stmt = stmt.on_conflict_do_nothing(index_elements=['proposicao_id', 'deputado_id'])
         db.execute(stmt)
         db.commit()
+    logging.info("Sincronização de autores de proposições concluída!")
 
-    print("--- Sincronização de autores de proposições concluída! ---")
 
 
 async def main():
@@ -121,6 +123,6 @@ async def main():
         await camara_api_client.close()
 
 if __name__ == "__main__":
-    print("--- EXECUTANDO SCRIPT PARA SINCRONIZAR APENAS AUTORES DE PROPOSIÇÕES (EM LOTES) ---")
+    logging.info("--- EXECUTANDO SCRIPT PARA SINCRONIZAR APENAS AUTORES DE PROPOSIÇÕES (EM LOTES) ---")
     asyncio.run(main())
-    print("\n--- PROCESSO FINALIZADO ---")
+    logging.info("\n--- PROCESSO FINALIZADO ---")

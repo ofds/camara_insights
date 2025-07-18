@@ -1,3 +1,5 @@
+import logging
+
 # app/infra/llm_client.py
 import httpx
 import json
@@ -61,19 +63,19 @@ class LLMClient:
                 return json.loads(json_content_str)
 
         except httpx.HTTPStatusError as e:
-            print(f"Erro de HTTP ao chamar a API do LLM: {e.response.status_code} - {e.response.text}")
+            logging.error(f"Erro de HTTP ao chamar a API do LLM: {e.response.status_code} - {e.response.text}")
 
         except (json.JSONDecodeError, KeyError) as e:
             # --- Bloco de depuração melhorado ---
-            print(f"--- ERRO DE PARSING JSON ---")
-            print(f"Erro: {e}")
+            logging.error(f"--- ERRO DE PARSING JSON ---")
+            logging.error(f"Erro: {e}")
             raw_content = llm_response_data.get('choices', [{}])[0].get('message', {}).get('content', 'Nenhum conteúdo na resposta.')
-            print(f"Conteúdo bruto recebido do LLM que causou o erro: '{raw_content}'")
-            print(f"-----------------------------")
+            logging.error(f"Conteúdo bruto recebido do LLM que causou o erro: '{raw_content}'")
+            logging.error(f"-----------------------------")
             # --- Fim do bloco de depuração ---
-
         except Exception as e:
-            print(f"Um erro inesperado ocorreu no cliente LLM: {e}")
+            logging.error(f"Um erro inesperado ocorreu no cliente LLM: {e}")
+
         
         return None
 

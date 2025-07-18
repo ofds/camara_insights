@@ -1,3 +1,5 @@
+import logging
+
 # scripts/check_ai_data.py
 import sys
 import os
@@ -12,7 +14,7 @@ from app.infra.db.models.entidades import Proposicao
 def check_results():
     db = SessionLocal()
     try:
-        print("--- Verificando os 10 últimos resultados da análise de IA ---")
+        logging.info("--- Verificando os 10 últimos resultados da análise de IA ---")
         
         # Busca os últimos 10 resultados da tabela de IA,
         # e também busca a proposição original para termos contexto.
@@ -25,23 +27,23 @@ def check_results():
         )
 
         if not results:
-            print("Nenhum dado de análise de IA encontrado no banco de dados.")
+            logging.info("Nenhum dado de análise de IA encontrado no banco de dados.")
             return
 
         for ai_data, proposicao in results:
-            print("\n" + "="*80)
-            print(f"Análise para Proposição ID: {ai_data.proposicao_id} ({proposicao.siglaTipo} {proposicao.numero}/{proposicao.ano})")
-            print(f"Ementa Original: {proposicao.ementa}")
-            print("-"*80)
-            print(f"Modelo Utilizado: {ai_data.model_version}")
-            print(f"Score de Impacto (Calculado): {ai_data.impact_score}")
-            print(f"Score (Estimativa LLM): {ai_data.llm_impact_estimate}")
-            print(f"Resumo (Summary): {ai_data.summary}")
-            print(f"Abrangência (Scope): {ai_data.scope}")
-            print(f"Magnitude: {ai_data.magnitude}")
+            logging.info("\n" + "="*80)
+            logging.info(f"Análise para Proposição ID: {ai_data.proposicao_id} ({proposicao.siglaTipo} {proposicao.numero}/{proposicao.ano})")
+            logging.info(f"Ementa Original: {proposicao.ementa}")
+            logging.info("-"*80)
+            logging.info(f"Modelo Utilizado: {ai_data.model_version}")
+            logging.info(f"Score de Impacto (Calculado): {ai_data.impact_score}")
+            logging.info(f"Score (Estimativa LLM): {ai_data.llm_impact_estimate}")
+            logging.info(f"Resumo (Summary): {ai_data.summary}")
+            logging.info(f"Abrangência (Scope): {ai_data.scope}")
+            logging.info(f"Magnitude: {ai_data.magnitude}")
             # json.dumps para formatar o JSON de forma legível
-            print(f"Tags: {json.dumps(ai_data.tags, indent=2, ensure_ascii=False)}")
-            print("="*80)
+            logging.info(f"Tags: {json.dumps(ai_data.tags, indent=2, ensure_ascii=False)}")
+            logging.info("="*80)
 
     finally:
         db.close()

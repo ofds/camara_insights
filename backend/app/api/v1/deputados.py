@@ -1,3 +1,5 @@
+import logging
+
 # backend/app/api/v1/deputados.py
 
 from fastapi import APIRouter, Depends, Query, Request, HTTPException, Response

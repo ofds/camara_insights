@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import logging
+
 """
 Quick test to verify the ProposicaoAutor import fix works correctly.
 """
@@ -18,32 +20,32 @@ async def test_imports():
         from sqlalchemy.dialects.postgresql import insert as pg_insert
         
         # Test that we can access the relationship table
-        print("✅ Successfully imported models")
-        print(f"✅ proposicao_autores table exists: {hasattr(models, 'proposicao_autores')}")
+        logging.info("✅ Successfully imported models")
+        logging.info(f"✅ proposicao_autores table exists: {hasattr(models, 'proposicao_autores')}")
         
         # Test that ProposicaoAutor doesn't exist (as expected)
         try:
             getattr(models, 'ProposicaoAutor')
-            print("❌ ProposicaoAutor should not exist as a model")
+            logging.error("❌ ProposicaoAutor should not exist as a model")
             return False
         except AttributeError:
-            print("✅ ProposicaoAutor correctly doesn't exist as a model")
+            logging.info("✅ ProposicaoAutor correctly doesn't exist as a model")
         
         return True
         
     except Exception as e:
-        print(f"❌ Import error: {e}")
+        logging.error(f"❌ Import error: {e}")
         return False
 
 async def main():
     """Main test runner."""
-    print("Testing import fixes...")
+    logging.info("Testing import fixes...")
     success = await test_imports()
     
     if success:
-        print("\n✅ All import tests passed!")
+        logging.info("\n✅ All import tests passed!")
     else:
-        print("\n❌ Import tests failed!")
+        logging.error("\n❌ Import tests failed!")
     
     return 0 if success else 1
 

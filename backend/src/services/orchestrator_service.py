@@ -1,3 +1,5 @@
+import logging
+
 """
 Data-driven orchestrator service for managing ETL flows.
 This follows the Open/Closed Principle by allowing new tasks to be added without modifying existing code.
@@ -60,7 +62,7 @@ class OrchestratorService:
         
         @flow(name=flow_name, log_prints=True)
         async def etl_flow(**flow_kwargs):
-            print(f"🚀 Starting {flow_name}...")
+            logging.info(f"🚀 Starting {flow_name}...")
             
             # Track task futures for dependency management
             task_futures = {}
@@ -101,7 +103,7 @@ class OrchestratorService:
                     processed_tasks.add(task_name)
                     remaining_tasks.remove(task_name)
             
-            print("✅ All tasks submitted. Flow will wait for completion.")
+            logging.info("✅ All tasks submitted. Flow will wait for completion.")
         
         return etl_flow
     

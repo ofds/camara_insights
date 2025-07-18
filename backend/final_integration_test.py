@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import logging
+
 """
 Final integration test to verify all fixes work correctly.
 """
@@ -18,21 +20,21 @@ async def test_all_imports():
             Proposicao, Deputado, Evento, Votacao, Voto,
             Tramitacao, proposicao_autores
         )
-        print("✅ All model imports successful")
+        logging.info("✅ All model imports successful")
         
         # Test service imports
         from src.services.data_sync_service import DataSyncService
         from src.services.backlog_processor import BacklogProcessor
-        print("✅ All service imports successful")
+        logging.info("✅ All service imports successful")
         
         # Test repository imports
         from src.data.repository import BaseRepository, ProposicaoRepository
-        print("✅ All repository imports successful")
+        logging.info("✅ All repository imports successful")
         
         return True
         
     except Exception as e:
-        print(f"❌ Import error: {e}")
+        logging.error(f"❌ Import error: {e}")
         return False
 
 async def test_service_initialization():
@@ -45,20 +47,20 @@ async def test_service_initialization():
         # Test DataSyncService
         db = SessionLocal()
         sync_service = DataSyncService(db)
-        print("✅ DataSyncService initialized successfully")
+        logging.info("✅ DataSyncService initialized successfully")
         
         # Test BacklogProcessor
         def session_factory():
             return SessionLocal()
         
         processor = BacklogProcessor(session_factory, batch_size=1)
-        print("✅ BacklogProcessor initialized successfully")
+        logging.info("✅ BacklogProcessor initialized successfully")
         
         db.close()
         return True
         
     except Exception as e:
-        print(f"❌ Service initialization error: {e}")
+        logging.error(f"❌ Service initialization error: {e}")
         return False
 
 async def test_no_proposicao_autor_references():
@@ -75,17 +77,17 @@ async def test_no_proposicao_autor_references():
                     with open(filepath, 'r', encoding='utf-8') as f:
                         content = f.read()
                         if 'ProposicaoAutor' in content and 'proposicao_autores' not in content:
-                            print(f"❌ Found ProposicaoAutor reference in {filepath}")
+                            logging.error(f"❌ Found ProposicaoAutor reference in {filepath}")
                             return False
                 except:
                     continue
     
-    print("✅ No remaining ProposicaoAutor references found")
+    logging.info("✅ No remaining ProposicaoAutor references found")
     return True
-
 async def main():
     """Run all tests."""
-    print("=== Final Integration Test ===")
+    logging.info("=== Final Integration Test ===")
+    
     
     tests = [
         test_all_imports,
@@ -95,16 +97,16 @@ async def main():
     
     all_passed = True
     for test in tests:
-        print(f"\n--- Running {test.__name__} ---")
+        logging.info(f"\n--- Running {test.__name__} ---")
         passed = await test()
         if not passed:
             all_passed = False
     
     print("\n=== Test Results ===")
     if all_passed:
-        print("✅ All tests passed! The refactoring is complete and working.")
+        logging.info("✅ All tests passed! The refactoring is complete and working.")
     else:
-        print("❌ Some tests failed. Please check the output above.")
+        logging.error("❌ Some tests failed. Please check the output above.")
     
     return 0 if all_passed else 1
 

@@ -1,3 +1,5 @@
+import logging
+
 """
 Daily sync task for prioritized information.
 This task syncs only the most critical and frequently updated information:
@@ -36,7 +38,7 @@ async def daily_priority_sync(
     Returns:
         Dictionary with sync results
     """
-    print("--- Starting Daily Priority Sync ---")
+    logging.info("--- Starting Daily Priority Sync ---")
     
     # Create database session
     db = SessionLocal()
@@ -86,15 +88,15 @@ async def daily_priority_sync(
         # This can be added later if needed
         results["related_propositions"] = 0
         
-        print(f"--- Daily Priority Sync Completed ---")
-        print(f"Propositions synced: {results['propositions']}")
-        print(f"Authors synced: {results['authors']}")
-        print(f"Status updates synced: {results['status_updates']}")
-        print(f"Related propositions synced: {results['related_propositions']}")
+        logging.info(f"--- Daily Priority Sync Completed ---")
+        logging.info(f"Propositions synced: {results['propositions']}")
+        logging.info(f"Authors synced: {results['authors']}")
+        logging.info(f"Status updates synced: {results['status_updates']}")
+        logging.info(f"Related propositions synced: {results['related_propositions']}")
         
     except Exception as e:
         error_msg = f"Error during daily sync: {str(e)}"
-        print(error_msg)
+        logging.error(error_msg)
         results["errors"].append(error_msg)
     
     return results

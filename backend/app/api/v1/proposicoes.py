@@ -1,3 +1,5 @@
+import logging
+
 # backend/app/api/v1/proposicoes.py
 
 import asyncio

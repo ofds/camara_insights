@@ -1,3 +1,5 @@
+import logging
+
 # app/core/scheduler.py
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 # Importa a nova função mestre do nosso serviço de automação
@@ -9,7 +11,7 @@ def start_scheduler():
     """
     Adiciona as tarefas ao agendador e o inicia.
     """
-    print("Configurando tarefas agendadas...")
+    logging.info("Configurando tarefas agendadas...")
     
     # Adiciona a tarefa de atualização completa para rodar 2 vezes ao dia
     scheduler.add_job(
@@ -21,5 +23,5 @@ def start_scheduler():
         replace_existing=True
     )
     
-    print("Agendador iniciado com as tarefas configuradas.")
+    logging.info("Agendador iniciado com as tarefas configuradas.")
     scheduler.start()

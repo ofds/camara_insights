@@ -1,3 +1,5 @@
+import logging
+
 # app/services/automation_service.py
 import asyncio
 from sqlalchemy.orm import Session
@@ -26,11 +28,11 @@ async def fetch_and_save_detail(db: Session, model: Type[Base], item_uri: str):
         if detail_response and 'dados' in detail_response:
             upsert_entidade(db, model, detail_response['dados'])
     except Exception as e:
-        print(f"Erro ao processar a URI {item_uri}: {e}")
+        logging.error(f"Erro ao processar a URI {item_uri}: {e}")
 
 async def sync_entity(db: Session, model: Type[Base], endpoint: str, params: Dict[str, Any] = {}):
     """ Função genérica para sincronizar uma entidade (descoberta + enriquecimento). """
-    print(f"--- [SYNC] Iniciando descoberta para {model.__tablename__}... ---")
+    logging.info(f"--- [SYNC] Iniciando descoberta para {model.__tablename__}... ---")
     summary_data: List[Dict[str, Any]] = []
     next_url: str = f"{camara_api_client.base_url}{endpoint}"
     current_params = params.copy()
@@ -47,7 +49,7 @@ async def sync_entity(db: Session, model: Type[Base], endpoint: str, params: Dic
         next_url = None if (next_link and self_link and next_link['href'] == self_link['href']) else (next_link['href'] if next_link else None)
 
     if summary_data:
-        print(f"--- [SYNC] {len(summary_data)} itens descobertos. Iniciando enriquecimento... ---")
+        logging.info(f"--- [SYNC] {len(summary_data)} itens descobertos. Iniciando enriquecimento... ---")
         tasks = [fetch_and_save_detail(db, model, item['uri']) for item in summary_data if 'uri' in item]
         batch_size = 10
         for i in range(0, len(tasks), batch_size):
@@ -78,14 +80,14 @@ async def run_scoring_task():
     """ Executa uma rodada do serviço de análise e pontuação de IA. """
     db = SessionLocal()
     try:
-        print("--- [SCORING] Buscando proposições não analisadas... ---")
+        logging.info("--- [SCORING] Buscando proposições não analisadas... ---")
         propositions_to_score = get_unscored_propositions(db, limit=15)
 
         if propositions_to_score:
             print(f"--- [SCORING] Encontradas {len(propositions_to_score)} proposições para analisar.")
             await analyze_and_score_propositions(db, propositions_to_score)
         else:
-            print("--- [SCORING] Nenhuma proposição nova para analisar no momento.")
+            logging.info("--- [SCORING] Nenhuma proposição nova para analisar no momento.")
     finally:
         db.close()
 
@@ -97,7 +99,7 @@ async def run_daily_update_task():
     A tarefa mestre que o agendador irá chamar.
     Primeiro sincroniza, depois analisa.
     """
-    print(f"\n--- [AGENDADOR] INICIANDO TAREFA DE ATUALIZAÇÃO DIÁRIA - {datetime.now()} ---")
+    logging.info(f"\n--- [AGENDADOR] INICIANDO TAREFA DE ATUALIZAÇÃO DIÁRIA - {datetime.now()} ---")
     await run_full_sync()
     await run_scoring_task()
-    print(f"--- [AGENDADOR] TAREFA DE ATUALIZAÇÃO DIÁRIA FINALIZADA - {datetime.now()} ---\n")
+    logging.info(f"--- [AGENDADOR] TAREFA DE ATUALIZAÇÃO DIÁRIA FINALIZADA - {datetime.now()} ---\n")

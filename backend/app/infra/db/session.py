@@ -1,3 +1,5 @@
+import logging
+
 # backend/app/infra/db/session.py
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker

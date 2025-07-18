@@ -1,3 +1,5 @@
+import logging
+
 # camara_insights/app/infra/db/crud/referencias.py
 from sqlalchemy.orm import Session
 from app.infra.db.models import referencias as models

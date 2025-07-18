@@ -1,3 +1,5 @@
+import logging
+
 # backend/app/infra/db/crud/utils.py
 
 from sqlalchemy import func, asc, desc

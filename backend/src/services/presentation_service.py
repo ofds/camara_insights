@@ -1,3 +1,5 @@
+import logging
+
 """
 Presentation service for displaying AI analysis results.
 This separates the presentation logic from data access, following SRP.
