@@ -1,7 +1,9 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-pydantic
-pydantic-settings
-httpx
-alembic
+APScheduler==3.11.0
+fastapi==0.116.1
+httpx==0.28.1
+prefect==3.4.9
+pydantic==2.11.7
+pydantic_settings==2.10.1
+python_dateutil==2.9.0.post0
+SQLAlchemy==2.0.41
+Unidecode==1.4.0
