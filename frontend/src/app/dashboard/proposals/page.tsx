@@ -1,16 +1,15 @@
-// frontend/src/app/dashboard/proposals/page.tsx
-
 'use client';
 
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ProposalsFilters } from '@/components/dashboard/proposal/proposals-filters';
 import { ProposalsTable } from '@/components/dashboard/proposal/proposals-table';
 import { getPropositions } from '@/services/proposicoes.service';
 import type { ApiProposal, Proposal } from '@/types/proposition';
+import { useDebounce } from 'use-debounce';
 
 export default function Page(): React.JSX.Element {
   const [rawProposals, setRawProposals] = useState<ApiProposal[]>([]);
@@ -19,7 +18,12 @@ export default function Page(): React.JSX.Element {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<{ [key: string]: string | number }>({});
+
+  // Raw filters updated immediately by the filters component
+  const [rawFilters, setRawFilters] = useState<{ [key: string]: string | number | boolean }>({});
+  // Debounced version of the filters used in the API call
+  const [filters] = useDebounce(rawFilters, 500);
+
   const [sort, setSort] = useState<{ property: string; order: 'asc' | 'desc' }>({
     property: 'dataApresentacao',
     order: 'desc',
@@ -29,7 +33,7 @@ export default function Page(): React.JSX.Element {
     try {
       setLoading(true);
       const sortString = `${sort.property}:${sort.order}`;
-      // --- MODIFIED: The function now returns an object ---
+
       const { proposicoes, total } = await getPropositions({
         limit: rowsPerPage,
         skip: page * rowsPerPage,
@@ -38,7 +42,7 @@ export default function Page(): React.JSX.Element {
       });
 
       setRawProposals(proposicoes);
-      setTotalCount(total); // Using a placeholder for total count as the API doesn't provide it
+      setTotalCount(total);
       setError(null);
     } catch (error_) {
       setError('Falha ao carregar as propostas');
@@ -52,7 +56,7 @@ export default function Page(): React.JSX.Element {
     fetchProposals();
   }, [fetchProposals]);
 
-  const displayRows = React.useMemo((): Proposal[] => {
+  const displayRows = useMemo((): Proposal[] => {
     return rawProposals.map((prop) => ({
       id: prop.id.toString(),
       title: `${prop.siglaTipo} ${prop.numero}/${prop.ano}`,
@@ -66,7 +70,10 @@ export default function Page(): React.JSX.Element {
     }));
   }, [rawProposals]);
 
-  const handlePageChange = (event: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
+  const handlePageChange = (
+    event: React.MouseEvent<HTMLButtonElement> | null,
+    newPage: number
+  ) => {
     setPage(newPage);
   };
 
@@ -80,10 +87,6 @@ export default function Page(): React.JSX.Element {
     setSort({ property, order: isAsc ? 'desc' : 'asc' });
   };
 
-  const handleFilterChange = (newFilters: { [key: string]: string | number }) => {
-    setFilters(newFilters);
-  };
-
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={3}>
@@ -92,7 +95,7 @@ export default function Page(): React.JSX.Element {
           {error && <Typography color="error">{error}</Typography>}
         </Stack>
       </Stack>
-      <ProposalsFilters onFilterChange={handleFilterChange} />
+      <ProposalsFilters setRawFilters={setRawFilters} />
       <ProposalsTable
         count={totalCount}
         page={page}

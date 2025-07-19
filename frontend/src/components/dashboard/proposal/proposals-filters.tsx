@@ -1,13 +1,21 @@
-// frontend/src/components/dashboard/proposal/proposals-filters.tsx
+'use client';
 
 import * as React from 'react';
 import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
-import { Select, MenuItem, InputLabel, FormControl, TextField, FormControlLabel, Switch } from '@mui/material';
+import {
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  TextField,
+  FormControlLabel,
+  Switch,
+} from '@mui/material';
 
-// Array com os tipos de proposição para facilitar a manutenção
+// Tipos de proposições
 const proposalTypes = [
   { sigla: 'MPV', nome: 'Medida Provisória' },
   { sigla: 'PDC', nome: 'Projeto de Decreto Legislativo' },
@@ -22,9 +30,9 @@ const proposalTypes = [
 ];
 
 export function ProposalsFilters({
-  onFilterChange,
+  setRawFilters,
 }: {
-  onFilterChange: (filters: { [key: string]: string | number | boolean }) => void;
+  setRawFilters: (filters: { [key: string]: string | number | boolean }) => void;
 }): React.JSX.Element {
   const [filters, setFilters] = React.useState<{ [key: string]: string | number | boolean }>({});
 
@@ -34,7 +42,7 @@ export function ProposalsFilters({
       delete newFilters[key];
     }
     setFilters(newFilters);
-    onFilterChange(newFilters);
+    setRawFilters(newFilters); // Immediately propagate to parent
   };
 
   return (
@@ -71,30 +79,30 @@ export function ProposalsFilters({
       <FormControl sx={{ minWidth: 120 }} size="small">
         <InputLabel>Escopo</InputLabel>
         <Select
-            onChange={(e) => handleChange('scope', e.target.value as string)}
-            label="Escopo"
-            value={filters.scope || ''}
+          onChange={(e) => handleChange('scope', e.target.value as string)}
+          label="Escopo"
+          value={filters.scope || ''}
         >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="Nacional">Nacional</MenuItem>
-            <MenuItem value="Estadual">Estadual</MenuItem>
-            <MenuItem value="Municipal">Municipal</MenuItem>
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="Nacional">Nacional</MenuItem>
+          <MenuItem value="Estadual">Estadual</MenuItem>
+          <MenuItem value="Municipal">Municipal</MenuItem>
         </Select>
       </FormControl>
       <FormControl sx={{ minWidth: 120 }} size="small">
-          <InputLabel>Magnitude</InputLabel>
-          <Select
-              onChange={(e) => handleChange('magnitude', e.target.value as string)}
-              label="Magnitude"
-              value={filters.magnitude || ''}
-          >
-              <MenuItem value="">Todas</MenuItem>
-              <MenuItem value="Baixo">Baixo</MenuItem>
-              <MenuItem value="Médio">Médio</MenuItem>
-              <MenuItem value="Alto">Alto</MenuItem>
-              <MenuItem value="Setorial Específico">Setorial Específico</MenuItem>
-              <MenuItem value="População Geral">População Geral</MenuItem>
-          </Select>
+        <InputLabel>Magnitude</InputLabel>
+        <Select
+          onChange={(e) => handleChange('magnitude', e.target.value as string)}
+          label="Magnitude"
+          value={filters.magnitude || ''}
+        >
+          <MenuItem value="">Todas</MenuItem>
+          <MenuItem value="Baixo">Baixo</MenuItem>
+          <MenuItem value="Médio">Médio</MenuItem>
+          <MenuItem value="Alto">Alto</MenuItem>
+          <MenuItem value="Setorial Específico">Setorial Específico</MenuItem>
+          <MenuItem value="População Geral">População Geral</MenuItem>
+        </Select>
       </FormControl>
       <TextField
         label="Data Início"
