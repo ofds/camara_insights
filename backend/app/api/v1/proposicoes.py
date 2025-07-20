@@ -38,8 +38,10 @@ def read_proposicoes(
     """
     Retorna uma lista de proposições com paginação, filtros e ordenação dinâmicos.
     """
-    filter_exclude_params = {'skip', 'limit', 'sort', 'scored', 'data_inicio', 'data_fim'}
+    filter_exclude_params = {'skip', 'limit', 'sort', 'scored', 'data_inicio', 'data_fim', 'search'}
     filters = {k: v for k, v in req.query_params.items() if k not in filter_exclude_params}
+
+    search_query = req.query_params.get('search', None)
 
     if data_inicio:
         filters['dataApresentacao__gte'] = data_inicio
@@ -54,7 +56,8 @@ def read_proposicoes(
         limit=limit,
         filters=filters,
         sort=sort,
-        scored=scored
+        scored=scored,
+        search=search_query
     )
 
     # Reconstruct the response to match the ProposicaoPaginatedResponse schema

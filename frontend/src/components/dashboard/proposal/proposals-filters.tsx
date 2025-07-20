@@ -49,7 +49,7 @@ export function ProposalsFilters({
     <Card sx={{ p: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
       <OutlinedInput
         defaultValue=""
-        placeholder="Buscar por título"
+        placeholder="Buscar por palavras-chave..."
         size="small"
         startAdornment={
           <InputAdornment position="start">
@@ -57,7 +57,7 @@ export function ProposalsFilters({
           </InputAdornment>
         }
         sx={{ flexGrow: 1, minWidth: '200px' }}
-        onChange={(e) => handleChange('ementa__ilike', e.target.value)}
+        onChange={(e) => handleChange('search', e.target.value)}
       />
       <FormControl sx={{ minWidth: 100 }} size="small">
         <InputLabel>Tipo</InputLabel>

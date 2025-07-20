@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.orm import Session, joinedload, aliased
-from sqlalchemy import DateTime, Date, desc, asc, func, text, or_
+from sqlalchemy import DateTime, Date, desc, asc, func, text, or_, cast, Text
 from app.infra.db.models import entidades as models
 from app.infra.db.models import ai_data as models_ai 
 from datetime import datetime, date
@@ -152,7 +152,8 @@ def get_proposicoes(
     limit: int = 100,
     filters: Optional[Dict[str, Any]] = None,
     sort: Optional[str] = None,
-    scored: Optional[bool] = None
+    scored: Optional[bool] = None,
+    search: Optional[str] = None
 ):
     Autor = aliased(models.Deputado)
 
@@ -176,9 +177,20 @@ def get_proposicoes(
         author_subquery.c.autores_db
     ).outerjoin(
         models_ai.ProposicaoAIData, models.Proposicao.id == models_ai.ProposicaoAIData.proposicao_id
-    ).outerjoin(
+        ).outerjoin(
         author_subquery, models.Proposicao.id == author_subquery.c.pid
     )
+
+    if search:
+        search_query = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Proposicao.ementa.ilike(search_query),
+                models_ai.ProposicaoAIData.summary.ilike(search_query),
+                models.Proposicao.keywords.ilike(search_query),
+                cast(models_ai.ProposicaoAIData.tags, Text).ilike(search_query)
+            )
+        )
 
     if filters:
         # Handle author filter separately
@@ -523,26 +535,3 @@ def get_proposal_activity(db: Session, deputado_id: int) -> List[datetime]:
     return [item[0] for item in query]
 
 
-def search_proposicoes(db: Session, query: str, skip: int = 0, limit: int = 100):
-    """
-    Busca proposições que correspondam à query em vários campos.
-    """
-    search_query = f"%{query}%"
-    
-    # Query base
-    base_query = db.query(models.Proposicao).filter(
-        or_(
-            models.Proposicao.ementa.ilike(search_query),
-            models.Proposicao.ementaDetalhada.ilike(search_query),
-            models.Proposicao.keywords.ilike(search_query),
-            models.Proposicao.texto.ilike(search_query)
-        )
-    )
-    
-    # Obter a contagem total de resultados
-    total_count = base_query.count()
-    
-    # Aplicar paginação e obter os resultados
-    proposicoes = base_query.offset(skip).limit(limit).all()
-    
-    return proposicoes, total_count
