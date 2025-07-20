@@ -1,13 +1,11 @@
-import logging
-
 # backend/app/api/v1/proposicoes.py
 
 import asyncio
+import logging
 from fastapi import APIRouter, Depends, Query, Request, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Any
 from datetime import date, timedelta
-
 from app.domain import entidades as schemas
 from app.infra.db.crud import entidades as crud
 from app.infra.db.session import SessionLocal
