@@ -22,9 +22,9 @@ export function Logo({ color = 'dark', emblem, height = HEIGHT, width = WIDTH }:
   let url: string;
 
   if (emblem) {
-    url = color === 'light' ? '/assets/logo-emblem.svg' : '/assets/logo-emblem--dark.svg';
+    url = color === 'light' ? '/assets/icon_camara_insights.png' : '/assets/icon_camara_insights.png';
   } else {
-    url = color === 'light' ? '/assets/logo.svg' : '/assets/logo--dark.svg';
+    url = color === 'light' ? '/assets/icon_camara_insights.png' : '/assets/icon_camara_insights.png';
   }
 
   return <Box alt="logo" component="img" height={height} src={url} width={width} />;

@@ -3,3 +3,5 @@ __pycache__/
 camara_insights.db
 **/__pycache__/
 *.env
+*.env.development
+*.env.production
