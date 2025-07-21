@@ -155,6 +155,7 @@ export default function WeeklyCalendar({ events }: WeeklyCalendarProps) {
                     height: 170,
                     minWidth: 0,
                     position: 'relative', // Needed for the top bar
+                    bgcolor: 'background.paper',
                   }}
                 >
                   {isToday && (
