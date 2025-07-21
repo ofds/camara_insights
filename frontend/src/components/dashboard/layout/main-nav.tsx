@@ -14,6 +14,7 @@ import { UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 
 import { usePopover } from '@/hooks/use-popover';
 
+import { MainNavSearch } from './main-nav-search';
 import { MobileNav } from './mobile-nav';
 import { UserPopover } from './user-popover';
 
@@ -48,11 +49,7 @@ export function MainNav(): React.JSX.Element {
             >
               <ListIcon />
             </IconButton>
-            <Tooltip title="Search">
-              <IconButton>
-                <MagnifyingGlassIcon />
-              </IconButton>
-            </Tooltip>
+            <MainNavSearch />
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
             <Tooltip title="Contacts">

@@ -3,7 +3,10 @@
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+
 
 import { ProposalsFilters } from '@/components/dashboard/proposal/proposals-filters';
 import { ProposalsTable } from '@/components/dashboard/proposal/proposals-table';
@@ -20,7 +23,28 @@ export default function Page(): React.JSX.Element {
   const [totalCount, setTotalCount] = useState(0);
 
   // Raw filters updated immediately by the filters component
+  const searchParams = useSearchParams();
   const [rawFilters, setRawFilters] = useState<{ [key: string]: string | number | boolean }>({});
+
+  useEffect(() => {
+    const searchTermFromUrl = searchParams.get('search');
+    
+    setRawFilters(currentFilters => {
+      const newFilters = { ...currentFilters };
+
+      if (searchTermFromUrl) {
+        newFilters.search = searchTermFromUrl;
+      } else {
+        delete newFilters.search;
+      }
+
+      if (newFilters.search !== currentFilters.search) {
+        return newFilters;
+      }
+
+      return currentFilters;
+    });
+  }, [searchParams]);
   // Debounced version of the filters used in the API call
   const [filters] = useDebounce(rawFilters, 500);
 
@@ -95,7 +119,7 @@ export default function Page(): React.JSX.Element {
           {error && <Typography color="error">{error}</Typography>}
         </Stack>
       </Stack>
-      <ProposalsFilters setRawFilters={setRawFilters} />
+      <ProposalsFilters rawFilters={rawFilters} setRawFilters={setRawFilters} />
       <ProposalsTable
         count={totalCount}
         page={page}

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Card from '@mui/material/Card';
 import InputAdornment from '@mui/material/InputAdornment';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -30,11 +31,20 @@ const proposalTypes = [
 ];
 
 export function ProposalsFilters({
+  rawFilters,
   setRawFilters,
 }: {
+  rawFilters: { [key: string]: string | number | boolean };
   setRawFilters: (filters: { [key: string]: string | number | boolean }) => void;
 }): React.JSX.Element {
-  const [filters, setFilters] = React.useState<{ [key: string]: string | number | boolean }>({});
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [filters, setFilters] = React.useState<{ [key: string]: string | number | boolean }>(rawFilters);
+
+  React.useEffect(() => {
+    setFilters(rawFilters);
+  }, [rawFilters]);
 
   const handleChange = (key: string, value: string | number | boolean) => {
     const newFilters = { ...filters, [key]: value };
@@ -42,13 +52,28 @@ export function ProposalsFilters({
       delete newFilters[key];
     }
     setFilters(newFilters);
-    setRawFilters(newFilters); // Immediately propagate to parent
+    setRawFilters(newFilters);
+
+    if (key === 'search') {
+      const current = new URLSearchParams(Array.from(searchParams.entries())); // Use a mutable copy
+
+      if (!value) {
+        current.delete("search");
+      } else {
+        current.set("search", String(value));
+      }
+
+      const search = current.toString();
+      const query = search ? `?${search}` : "";
+
+      router.push(`${pathname}${query}`);
+    }
   };
 
   return (
     <Card sx={{ p: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
       <OutlinedInput
-        defaultValue=""
+        value={filters.search || ''}
         placeholder="Buscar por palavras-chave..."
         size="small"
         startAdornment={
