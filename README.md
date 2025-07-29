@@ -54,6 +54,12 @@ Todos esses dados são expostos através de uma API RESTful rápida e moderna, c
 - **Dashboards Interativos:** Visualizações de dados legislativos.
 - **Visualizações Detalhadas:** Informações aprofundadas sobre deputados, proposições e partidos.
 - **Design Responsivo:** Totalmente funcional em desktops e dispositivos móveis.
+<img width="1918" height="944" alt="image" src="https://github.com/user-attachments/assets/80b9c992-b0a3-4f47-b7ce-eb1a25451075" />
+<img width="1919" height="946" alt="image" src="https://github.com/user-attachments/assets/bf9a24b7-f0f4-4c74-b839-f01e1d2ed1d3" />
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/1129a626-336d-4533-9cb0-8de6f0bb96f3" />
+<img width="1920" height="2296" alt="image" src="https://github.com/user-attachments/assets/972baf23-01a6-4226-aea6-12a955adebcb" />
+
+
 
 ---
 
