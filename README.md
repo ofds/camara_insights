@@ -1,12 +1,14 @@
 # 🧠 Câmara Insights
 
+![Next.js](https://img.shields.io/badge/Next.js-14+-000000?logo=nextdotjs)
+![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
+![Material--UI](https://img.shields.io/badge/Material--UI-5+-0081CB?logo=mui)
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-4169E1?logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
-Um backend modular em Python para coletar, analisar, enriquecer com IA e servir dados públicos da API da Câmara dos Deputados do Brasil.
+O **Câmara Insights** é uma aplicação full-stack projetada para fornecer uma interface moderna, rica em dados e aprimorada por IA para explorar as atividades legislativas da Câmara dos Deputados do Brasil. Ele combina um backend poderoso em Python para coleta e análise de dados com um frontend elegante e responsivo em Next.js para visualização de dados e interação do usuário.
 
 ---
 
@@ -19,10 +21,8 @@ Um backend modular em Python para coletar, analisar, enriquecer com IA e servir 
   - [Pré-requisitos](#pré-requisitos)
   - [Instalação](#instalação)
 - [⚙️ Uso](#-uso)
-  - [1. Inicializar o Banco de Dados](#1-inicializar-o-banco-de-dados)
-  - [2. Sincronizar Dados da API](#2-sincronizar-dados-da-api)
-  - [3. Enriquecer Dados com IA](#3-enriquecer-dados-com-ia)
-  - [4. Iniciar o Servidor da API](#4-iniciar-o-servidor-da-api)
+  - [Backend](#backend)
+  - [Frontend](#frontend)
 - [📡 Endpoints da API](#-endpoints-da-api)
 - [🔮 Próximos Passos](#-próximos-passos)
 
@@ -32,12 +32,13 @@ Um backend modular em Python para coletar, analisar, enriquecer com IA e servir 
 
 O objetivo do **Câmara Insights** é criar uma fonte de dados centralizada e enriquecida sobre a atividade legislativa no Brasil. O sistema se conecta à [API de Dados Abertos da Câmara dos Deputados](https://dadosabertos.camara.leg.br/), coleta os dados, os armazena em um banco de dados relacional e utiliza Modelos de Linguagem Grandes (LLMs) para gerar insights, como resumos, tags e uma pontuação de impacto para as proposições.
 
-Todos esses dados são expostos através de uma API RESTful rápida e moderna, construída com FastAPI.
+Todos esses dados são expostos através de uma API RESTful rápida e moderna, construída com FastAPI, e consumidos por um frontend em Next.js que oferece uma rica experiência de usuário para explorar e entender os dados legislativos.
 
 ---
 
 ## ✨ Principais Funcionalidades
 
+### Backend
 - **Coleta de Dados Automatizada:** Scripts para sincronizar deputados, partidos, proposições, votações e mais.
 - **Enriquecimento com IA:** Utiliza LLMs (via OpenRouter) para:
   - Gerar resumos concisos de proposições.
@@ -48,21 +49,39 @@ Todos esses dados são expostos através de uma API RESTful rápida e moderna, c
 - **Agendamento de Tarefas:** Tarefas periódicas com `APScheduler`.
 - **Arquitetura Robusta:** Lógica de retentativas e *rate limiting* dinâmico para lidar com limites da API externa.
 
+### Frontend
+- **UI Moderna:** Uma interface limpa e intuitiva construída com Next.js e Material UI.
+- **Dashboards Interativos:** Visualizações de dados legislativos.
+- **Visualizações Detalhadas:** Informações aprofundadas sobre deputados, proposições e partidos.
+- **Design Responsivo:** Totalmente funcional em desktops e dispositivos móveis.
+
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
+### Backend
+| Área                 | Tecnologia                                   |
+|----------------------|----------------------------------------------|
+| **Linguagem**        | Python 3.11+                                 |
+| **Framework Web**    | FastAPI                                      |
+| **ORM / Migrations** | SQLAlchemy 2.0, Alembic                      |
+| **Banco de Dados**   | SQLite (Dev), PostgreSQL (Prod)              |
+| **Cliente HTTP**     | HTTPX                                        |
+| **Agendamento**      | APScheduler                                  |
+| **IA / LLMs**        | OpenRouter (DeepSeek)                        |
+| **Testes**           | Pytest                                       |
+| **Deployment**       | Docker, Docker Compose                       |
+
+### Frontend
 | Área                  | Tecnologia                                   |
 |-----------------------|----------------------------------------------|
-| **Linguagem** | Python 3.11+                                 |
-| **Framework Web** | FastAPI                                      |
-| **ORM / Migrations** | SQLAlchemy 2.0, Alembic                      |
-| **Banco de Dados** | SQLite (Dev), PostgreSQL (Prod)             |
-| **Cliente HTTP** | HTTPX                                        |
-| **Agendamento** | APScheduler                                  |
-| **IA / LLMs** | OpenRouter (DeepSeek)                        |
-| **Testes** | Pytest (Fase 6)                              |
-| **Deployment** | Docker, Docker Compose                       |
+| **Framework**         | Next.js 14+                                  |
+| **Linguagem**         | TypeScript                                   |
+| **Biblioteca de UI**  | Material UI (MUI) 5+                         |
+| **Gerenc. de Estado** | React Context API                            |
+| **Estilização**       | Emotion                                      |
+| **Busca de Dados**    | SWR / React Query (ou `fetch` nativo)        |
+| **Linting / Formatação**| ESLint, Prettier                           |
 
 ---
 
@@ -71,125 +90,101 @@ Todos esses dados são expostos através de uma API RESTful rápida e moderna, c
 ### Pré-requisitos
 
 - Python 3.11 ou superior
-- Pip (gerenciador de pacotes do Python)
+- Node.js e npm/pnpm/yarn
 - Chave de API do [OpenRouter](https://openrouter.ai/)
 
 ### Instalação
 
 1. **Clone o repositório:**
+   ```bash
+   git clone https://github.com/seu-usuario/camara-insights.git
+   cd camara-insights
+   ```
 
-```bash
-git clone [https://github.com/SEU_USUARIO/camara-insights.git](https://github.com/SEU_USUARIO/camara-insights.git)
-cd camara-insights
-````
+2. **Setup do Backend:**
+   - Navegue para o diretório `backend`: `cd backend`
+   - Crie e ative um ambiente virtual:
+     ```bash
+     # Windows (PowerShell)
+     python -m venv venv
+     . venv\Scripts\Activate.ps1
 
-2.  **Crie e ative um ambiente virtual (recomendado):**
+     # MacOS/Linux
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+   - Instale as dependências: `pip install -r requirements.txt`
+   - Crie um arquivo `.env` e adicione sua `DATABASE_URL` e `OPENROUTER_API_KEY`.
 
-<!-- end list -->
+3. **Setup do Frontend:**
+   - Navegue para o diretório `frontend`: `cd ../frontend`
+   - Instale as dependências: `npm install` (ou `pnpm install` / `yarn install`)
+   - Crie um arquivo `.env.local` se precisar sobrescrever configurações padrão (ex: o endpoint da API).
 
-```bash
-# Windows (PowerShell)
-python -m venv venv
-. env\Scripts\Activate.ps1
-
-# MacOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-3.  **Instale as dependências:**
-
-<!-- end list -->
-
-```bash
-pip install -r requirements.txt
-```
-
-4.  **Configure suas variáveis de ambiente:**
-
-Crie um arquivo `.env` na raiz do projeto com o conteúdo:
-
-```env
-DATABASE_URL="sqlite:///./camara_insights.db"
-OPENROUTER_API_KEY="sk-or-v1-sua-chave-aqui"
-```
-
------
+---
 
 ## ⚙️ Uso
 
-### 1\. Inicializar o Banco de Dados
+### Backend
 
-```bash
-python ./scripts/create_database.py
-```
+1. **Inicialize o Banco de Dados:**
+   ```bash
+   python ./scripts/create_database.py
+   ```
 
-### 2\. Sincronizar Dados da API
+2. **Sincronize os Dados da API:**
+   ```bash
+   # Tabelas de referência (tipos, status, etc.)
+   python ./scripts/sync_referencias.py
 
-```bash
-# Tabelas de referência (tipos, status, etc.)
-python ./scripts/sync_referencias.py
+   # Entidades principais (deputados, proposições desde 2023, etc.)
+   python ./scripts/sync_all.py
+   ```
+   > ⚠️ Este processo pode demorar alguns minutos.
 
-# Entidades principais (deputados, proposições desde 2023, etc.)
-python ./scripts/sync_all.py
-```
+3. **Enriqueça os Dados com IA:**
+   ```bash
+   python ./scripts/score_propositions.py
+   ```
 
-> ⚠️ Este processo pode demorar alguns minutos.
+4. **Inicie o Servidor da API:**
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+   O servidor estará disponível em [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
-### 3\. Enriquecer Dados com IA
+### Frontend
 
-```bash
-python ./scripts/score_propositions.py
-```
+1. **Inicie o Servidor de Desenvolvimento:**
+   ```bash
+   npm run dev
+   ```
+   A aplicação estará disponível em [http://localhost:3000](http://localhost:3000).
 
-Esse script processa todas as proposições ainda não analisadas e para automaticamente ao final.
-
-### 4\. Iniciar o Servidor da API
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Servidor disponível em: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-
------
+---
 
 ## 📡 Endpoints da API
 
-Acesse a documentação interativa (Swagger UI):
+Acesse a documentação interativa da API (Swagger UI):
 
 👉 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ### Exemplos:
-
-  - `GET /api/v1/deputados`
-
-      - Filtros: `?sigla_uf=SP`, `?sigla_partido=PT`
-
-  - `GET /api/v1/proposicoes`
-
-      - Filtros: `?ano=2024`, `?sigla_tipo=PL`
-      - Ordenação: `?sort=ano:desc`
-
-  - `GET /api/v1/partidos`
-
-  - `GET /api/v1/orgaos`
-
-  - `GET /api/v1/eventos`
-
-  - `GET /api/v1/votacoes`
+- `GET /api/v1/deputados`
+- `GET /api/v1/proposicoes`
+- `GET /api/v1/partidos`
 
 > Todos os endpoints suportam paginação: `?skip=0&limit=10`
 
------
+---
 
 ## 🔮 Próximos Passos
 
-  - **Fase 6:** Testes automatizados com Pytest + formatadores de código.
-  - **Fase 8:** Dashboard com Streamlit ou frontend React.
-  - **Melhoria dos Filtros:** Filtros por tema, autor, impacto, etc.
-  - **Endpoints Detalhados:** Ex: `GET /deputados/{id}` com dados completos relacionados.
+- **Testes Automatizados:** Aumentar a cobertura de testes para backend e frontend.
+- **CI/CD:** Implementar pipelines de integração e deployment contínuos.
+- **Filtros Avançados:** Adicionar opções de filtro mais complexas no frontend.
+- **Autenticação de Usuários:** Proteger partes da aplicação com contas de usuário.
 
------
+---
 
-🚧 Projeto em desenvolvimento contínuo. Contribuições são bem-vindas\!
+🚧 Projeto em desenvolvimento contínuo. Contribuições são bem-vindas!
