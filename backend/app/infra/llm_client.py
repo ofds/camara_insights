@@ -14,7 +14,7 @@ class LLMClient:
         
         self.api_key = settings.OPENROUTER_API_KEY
         self.base_url = "https://openrouter.ai/api/v1"
-        self.model = "moonshotai/kimi-k2:free"
+        self.model = "deepseek/deepseek-chat-v3-0324:free"
         self.system_prompt = self._load_prompt()
 
     def _load_prompt(self) -> str:

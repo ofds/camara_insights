@@ -2,7 +2,7 @@
 
 import type { ApiProposal as ApiProposition } from '@/types/proposition'; // Renamed for clarity
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // --- Interfaces ---
 export interface ProposalDetails {
